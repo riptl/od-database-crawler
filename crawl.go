@@ -8,7 +8,6 @@ import (
 	"golang.org/x/net/html/atom"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,8 +26,6 @@ var visited int64
 
 var in chan<- url.URL
 var out <-chan url.URL
-
-var matchHeader = regexp.MustCompile("([\\w-]+): (.*)")
 
 type File struct {
 	Name string `json:"name"`
@@ -188,24 +185,12 @@ func fileInfo(u url.URL, f *File) (err error) {
 
 	// TODO Inefficient af
 	header := res.Header.Header()
-	s := time.Now()
-	for i := 0; i < 10000; i++ {
-		f.ParseHeaderRegex(header)
-	}
-	println(time.Since(s).String())
+	f.ParseHeader(header)
 
 	return nil
 }
 
-func (f *File) ParseHeaderRegex(h []byte) {
-	for _, parts := range matchHeader.FindAllSubmatch(h, -1) {
-		k := string(parts[1])
-		v := string(parts[2])
-		f.applyHeader(k, v)
-	}
-}
-
-func (f *File) ParseHeaderMachine(h []byte) {
+func (f *File) ParseHeader(h []byte) {
 	var k1, k2 int
 	var v1, v2 int
 
