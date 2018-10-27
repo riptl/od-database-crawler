@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"github.com/sirupsen/logrus"
+	"github.com/valyala/fasthttp"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,13 +19,21 @@ const (
 	nConns = 100
 )
 
-var client = http.DefaultClient
+var client = fasthttp.Client{}
 var wait sync.WaitGroup
 
 var visited int64
 
 var in chan<- url.URL
 var out <-chan url.URL
+
+type File struct {
+	Name string `json:"name"`
+	Size int64 `json:"size"`
+	MTime time.Time `json:"mtime"`
+	Path string `json:"path"`
+	IsDir bool `json:"-"`
+}
 
 func main() {
 	if len(os.Args) != 2 {
@@ -62,27 +72,38 @@ func worker() {
 			for _, sub := range links {
 				subrefi, err := url.Parse(sub)
 				subref := *subrefi
+				// TODO Print errors
 				if err != nil { continue }
 				abs := *u.ResolveReference(&subref)
 				in <- abs
 			}
 		} else {
 			// File
-			// TODO check file
+			var fil File
+			err := fileInfo(u, &fil)
+			// TODO Print errors
+			if err != nil { continue }
 		}
 	}
 	wait.Done()
 }
 
 func listDir(u url.URL) (links []string) {
-	res, err := client.Get(u.String())
+	req := fasthttp.AcquireRequest()
+	req.SetRequestURI(u.String())
+
+	res := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(res)
+
+	err := client.Do(req, res)
+	fasthttp.ReleaseRequest(req)
+
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
-	defer res.Body.Close()
 
-	doc := html.NewTokenizer(res.Body)
+	doc := html.NewTokenizer(bytes.NewReader(res.Body()))
 
 	var linkHref string
 	var linkTexts []string
@@ -146,6 +167,55 @@ func listDir(u url.URL) (links []string) {
 	atomic.AddInt64(&visited, 1)
 
 	return
+}
+
+func fileInfo(u url.URL, f *File) (err error) {
+	req := fasthttp.AcquireRequest()
+	req.Header.SetMethod("HEAD")
+	req.SetRequestURI(u.String())
+
+	res := fasthttp.AcquireResponse()
+	res.SkipBody = true
+	defer fasthttp.ReleaseResponse(res)
+
+	err = client.Do(req, res)
+	fasthttp.ReleaseRequest(req)
+
+	if err != nil { return }
+
+	// TODO Inefficient af
+	header := res.Header.String()
+
+	for _, line := range strings.Split(header, "\r\n") {
+		if line == "" { continue }
+		if strings.HasPrefix(line, "HTTP/1") { continue }
+
+		parts := strings.SplitN(line, ": ", 2)
+		if len(parts) != 2 { continue }
+
+		k, v := parts[0], parts[1]
+		k = strings.ToLower(k)
+
+		switch k {
+		case "content-length":
+			size, err := strconv.ParseInt(v, 10, 64)
+			if err != nil { break }
+			if size < 0 { break }
+			f.Size = size
+
+		case "last-modified":
+			var err error
+			f.MTime, err = time.Parse(time.RFC1123, v)
+			if err == nil { break }
+			f.MTime, err = time.Parse(time.RFC850, v)
+			if err == nil { break }
+			// TODO Parse asctime
+			f.MTime, err = time.Parse("2006-01-02", v[:10])
+			if err == nil { break }
+		}
+	}
+
+	return nil
 }
 
 func makeInfinite() (chan<- url.URL, <-chan url.URL) {
