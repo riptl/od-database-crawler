@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +27,8 @@ var visited int64
 
 var in chan<- url.URL
 var out <-chan url.URL
+
+var matchHeader = regexp.MustCompile("([\\w-]+): (.*)")
 
 type File struct {
 	Name string `json:"name"`
@@ -186,68 +188,81 @@ func fileInfo(u url.URL, f *File) (err error) {
 
 	// TODO Inefficient af
 	header := res.Header.Header()
+	s := time.Now()
+	for i := 0; i < 10000; i++ {
+		f.ParseHeaderRegex(header)
+	}
+	println(time.Since(s).String())
 
-	var k []byte
-	var v []byte
+	return nil
+}
+
+func (f *File) ParseHeaderRegex(h []byte) {
+	for _, parts := range matchHeader.FindAllSubmatch(h, -1) {
+		k := string(parts[1])
+		v := string(parts[2])
+		f.applyHeader(k, v)
+	}
+}
+
+func (f *File) ParseHeaderMachine(h []byte) {
+	var k1, k2 int
+	var v1, v2 int
 
 	// Simple finite state machine
 	state := 0
-	for _, b := range header {
+	for i, b := range h {
 		switch state {
 		case 0:
 			if b == byte(':') {
 				state = 1
-			} else {
-				k = append(k, b)
+				k2 = i
 			}
 
 		case 1:
-			if b == byte(' ') {
-				state = 2
-			} else {
-				return errors.New("bad request")
-			}
+			state = 2
 
 		case 2:
-			if b == byte('\r') {
-				state = 3
-			} else {
-				v = append(v, b)
-			}
+			state = 3
+			v1 = i
 
 		case 3:
-			if b == byte('\n') {
-				state = 0
-				key := strings.ToLower(string(k))
-				val := string(v)
-
-				switch key {
-				case "content-length":
-					size, err := strconv.ParseInt(val, 10, 64)
-					if err != nil { break }
-					if size < 0 { break }
-					f.Size = size
-
-				case "last-modified":
-					var err error
-					f.MTime, err = time.Parse(time.RFC1123, val)
-					if err == nil { break }
-					f.MTime, err = time.Parse(time.RFC850, val)
-					if err == nil { break }
-					// TODO Parse asctime
-					f.MTime, err = time.Parse("2006-01-02", val[:10])
-					if err == nil { break }
-				}
-
-				k = k[:0]
-				v = v[:0]
-			} else {
-				return errors.New("bad request")
+			if b == byte('\r') {
+				state = 4
 			}
+
+		case 4:
+			state = 0
+			v2 = i - 1
+
+			key := string(h[k1:k2])
+			val := string(h[v1:v2])
+			k1 = i
+
+			f.applyHeader(key, val)
 		}
 	}
 
-	return nil
+}
+
+func (f *File) applyHeader(k, v string) {
+	switch k {
+	case "content-length":
+		size, err := strconv.ParseInt(v, 10, 64)
+		if err != nil { break }
+		if size < 0 { break }
+		f.Size = size
+
+	case "last-modified":
+		var err error
+		f.MTime, err = time.Parse(time.RFC1123, v)
+		if err == nil { break }
+		f.MTime, err = time.Parse(time.RFC850, v)
+		if err == nil { break }
+		// TODO Parse asctime
+		f.MTime, err = time.Parse("2006-01-02", v[:10])
+		if err == nil { break }
+	}
 }
 
 func makeInfinite() (chan<- url.URL, <-chan url.URL) {
