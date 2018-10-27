@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/PuerkitoBio/goquery"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,8 +63,8 @@ func worker() {
 				subrefi, err := url.Parse(sub)
 				subref := *subrefi
 				if err != nil { continue }
-
-				in <- *u.ResolveReference(&subref)
+				abs := *u.ResolveReference(&subref)
+				in <- abs
 			}
 		} else {
 			// File
@@ -74,9 +75,6 @@ func worker() {
 }
 
 func listDir(u url.URL) (links []string) {
-	//logrus.Infof("Visiting %s", u)
-	atomic.AddInt64(&visited, 1)
-
 	res, err := client.Get(u.String())
 	if err != nil {
 		logrus.Error(err)
@@ -84,34 +82,68 @@ func listDir(u url.URL) (links []string) {
 	}
 	defer res.Body.Close()
 
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		logrus.Error(err)
-		return
+	doc := html.NewTokenizer(res.Body)
+
+	var linkHref string
+	var linkTexts []string
+	for {
+		tokenType := doc.Next()
+		token := doc.Token()
+		if tokenType == html.ErrorToken {
+			break
+		}
+
+		switch tokenType {
+		case html.StartTagToken:
+			if token.DataAtom == atom.A {
+				for _, attr := range token.Attr {
+					if attr.Key == "href" {
+						linkHref = attr.Val
+						break
+					}
+				}
+			}
+
+		case html.TextToken:
+			if linkHref != "" {
+				linkTexts = append(linkTexts, token.Data)
+			}
+
+		case html.EndTagToken:
+			if linkHref != "" && token.DataAtom == atom.A {
+				// Copy params
+				href := linkHref
+				linkText := strings.Join(linkTexts, " ")
+
+				// Reset params
+				linkHref = ""
+				linkTexts = nil
+
+				// TODO Optimized decision tree
+				for _, entry := range urlBlackList {
+					if href == entry {
+						goto nextToken
+					}
+				}
+				for _, entry := range urlPartBlackList {
+					if strings.Contains(href, entry) {
+						goto nextToken
+					}
+				}
+				for _, entry := range fileNameBlackList {
+					if strings.Contains(linkText, entry) {
+						goto nextToken
+					}
+				}
+
+				links = append(links, href)
+			}
+		}
+
+		nextToken:
 	}
 
-	doc.Find("a[href]").Each(func(_ int, s *goquery.Selection) {
-		href, _ := s.Attr("href")
-		text := s.Text()
-
-		if href == "." {
-			return
-		}
-
-		for _, entry := range blackList {
-			if strings.Contains(href, entry) {
-				return
-			}
-		}
-
-		for _, entry := range fileNameBlackList {
-			if strings.Contains(text, entry) {
-				return
-			}
-		}
-
-		links = append(links, href)
-	})
+	atomic.AddInt64(&visited, 1)
 
 	return
 }
@@ -154,7 +186,15 @@ func makeInfinite() (chan<- url.URL, <-chan url.URL) {
 	return in, out
 }
 
-var blackList = [...]string {
+var urlBlackList = [...]string {
+	"",
+	" ",
+	".",
+	"..",
+	"/",
+}
+
+var urlPartBlackList = [...]string {
 	"?C=N&O=D",
 	"?C=M&O=A",
 	"?C=S&O=A",
