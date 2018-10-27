@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/net/html"
@@ -184,34 +185,65 @@ func fileInfo(u url.URL, f *File) (err error) {
 	if err != nil { return }
 
 	// TODO Inefficient af
-	header := res.Header.String()
+	header := res.Header.Header()
 
-	for _, line := range strings.Split(header, "\r\n") {
-		if line == "" { continue }
-		if strings.HasPrefix(line, "HTTP/1") { continue }
+	var k []byte
+	var v []byte
 
-		parts := strings.SplitN(line, ": ", 2)
-		if len(parts) != 2 { continue }
+	// Simple finite state machine
+	state := 0
+	for _, b := range header {
+		switch state {
+		case 0:
+			if b == byte(':') {
+				state = 1
+			} else {
+				k = append(k, b)
+			}
 
-		k, v := parts[0], parts[1]
-		k = strings.ToLower(k)
+		case 1:
+			if b == byte(' ') {
+				state = 2
+			} else {
+				return errors.New("bad request")
+			}
 
-		switch k {
-		case "content-length":
-			size, err := strconv.ParseInt(v, 10, 64)
-			if err != nil { break }
-			if size < 0 { break }
-			f.Size = size
+		case 2:
+			if b == byte('\r') {
+				state = 3
+			} else {
+				v = append(v, b)
+			}
 
-		case "last-modified":
-			var err error
-			f.MTime, err = time.Parse(time.RFC1123, v)
-			if err == nil { break }
-			f.MTime, err = time.Parse(time.RFC850, v)
-			if err == nil { break }
-			// TODO Parse asctime
-			f.MTime, err = time.Parse("2006-01-02", v[:10])
-			if err == nil { break }
+		case 3:
+			if b == byte('\n') {
+				state = 0
+				key := strings.ToLower(string(k))
+				val := string(v)
+
+				switch key {
+				case "content-length":
+					size, err := strconv.ParseInt(val, 10, 64)
+					if err != nil { break }
+					if size < 0 { break }
+					f.Size = size
+
+				case "last-modified":
+					var err error
+					f.MTime, err = time.Parse(time.RFC1123, val)
+					if err == nil { break }
+					f.MTime, err = time.Parse(time.RFC850, val)
+					if err == nil { break }
+					// TODO Parse asctime
+					f.MTime, err = time.Parse("2006-01-02", val[:10])
+					if err == nil { break }
+				}
+
+				k = k[:0]
+				v = v[:0]
+			} else {
+				return errors.New("bad request")
+			}
 		}
 	}
 
