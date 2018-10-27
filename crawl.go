@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/html/atom"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -66,36 +67,54 @@ func main() {
 
 func worker() {
 	for u := range out {
+		// File
+		var fil File
 		if strings.HasSuffix(u.Path, "/") {
 			// Dir
-			links := listDir(u)
+			links, err := listDir(u, &fil)
+			if err != nil {
+				logrus.WithError(err).
+					WithField("url", u.String()).
+					Error("Failed getting dir")
+				continue
+			}
 			for _, sub := range links {
 				subrefi, err := url.Parse(sub)
 				subref := *subrefi
 				// TODO Print errors
 				if err != nil { continue }
 				abs := *u.ResolveReference(&subref)
+				// TODO Check if host changed
 				in <- abs
 			}
+			//logrus.Infof("LISTED %s", u.Path)
 		} else {
-			// File
-			var fil File
 			err := fileInfo(u, &fil)
-			// TODO Print errors
-			if err != nil { continue }
+			if err != nil {
+				logrus.WithError(err).
+					WithField("url", u.String()).
+					Error("Failed getting file")
+				continue
+			}
 		}
 	}
 	wait.Done()
 }
 
-func listDir(u url.URL) (links []string) {
+func listDir(u url.URL, f *File) (links []string, err error) {
+	f.IsDir = true
+	u.Path = path.Clean(u.Path)
+	// TODO Handle external links
+	f.Name = path.Base(u.Path)
+	f.Path = strings.TrimLeft(u.Path, "/")
+
 	req := fasthttp.AcquireRequest()
 	req.SetRequestURI(u.String())
 
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
 
-	err := client.Do(req, res)
+	err = client.Do(req, res)
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil {
@@ -170,6 +189,11 @@ func listDir(u url.URL) (links []string) {
 }
 
 func fileInfo(u url.URL, f *File) (err error) {
+	f.IsDir = false
+	u.Path = path.Clean(u.Path)
+	f.Name = path.Base(u.Path)
+	f.Path = strings.Trim(u.Path, "/")
+
 	req := fasthttp.AcquireRequest()
 	req.Header.SetMethod("HEAD")
 	req.SetRequestURI(u.String())
@@ -186,6 +210,8 @@ func fileInfo(u url.URL, f *File) (err error) {
 	// TODO Inefficient af
 	header := res.Header.Header()
 	f.ParseHeader(header)
+
+	atomic.AddInt64(&visited, 1)
 
 	return nil
 }
