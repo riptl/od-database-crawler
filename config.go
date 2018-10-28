@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"os"
 	"time"
 )
 
@@ -39,18 +41,19 @@ func readConfig() {
 	viper.SetConfigName("config")
 	err := viper.ReadInConfig()
 	if err != nil {
-		logrus.Fatal(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	config.ServerUrl = viper.GetString(ConfServerUrl)
-	if config.ServerUrl == "" {
-		configMissing(ConfServerUrl)
-	}
+	//if config.ServerUrl == "" {
+	//	configMissing(ConfServerUrl)
+	//}
 
 	config.Token = viper.GetString(ConfToken)
-	if config.Token == "" {
-		configMissing(ConfToken)
-	}
+	//if config.Token == "" {
+	//	configMissing(ConfToken)
+	//}
 
 	config.Retries = viper.GetInt(ConfRetries)
 	if config.Retries < 0 {
@@ -76,9 +79,11 @@ func readConfig() {
 }
 
 func configMissing(key string) {
-	logrus.Fatalf("config: %s not set!", key)
+	fmt.Fprintf(os.Stderr, "config: %s not set!\n", key)
+	os.Exit(1)
 }
 
 func configOOB(key string, v int) {
-	logrus.Fatal("config: illegal value %d for %key!", v, key)
+	fmt.Fprintf(os.Stderr, "config: illegal value %d for %key!\n", v, key)
+	os.Exit(1)
 }

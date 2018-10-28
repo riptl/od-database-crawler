@@ -19,10 +19,6 @@ var client fasthttp.Client
 var ErrRateLimit = errors.New("too many requests")
 var ErrForbidden = errors.New("access denied")
 
-func NewRemoteDir(u url.URL) *OD {
-	return &OD{ BaseUri: u }
-}
-
 func GetDir(j *Job, f *File) (links []url.URL, err error) {
 	f.IsDir = true
 	f.Name = path.Base(j.Uri.Path)
