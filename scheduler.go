@@ -10,11 +10,15 @@ type Job struct {
 	Uri url.URL
 	UriStr string
 	Fails int
+	LastError error
 }
 
 func Schedule(c context.Context, remotes <-chan *RemoteDir) {
 	in, out := makeJobBuffer()
-	wCtx := WorkerContext{ in, out }
+	wCtx := WorkerContext{
+		in: in,
+		out: out,
+	}
 	for i := 0; i < config.Workers; i++ {
 		go wCtx.Worker()
 	}
@@ -28,7 +32,7 @@ func Schedule(c context.Context, remotes <-chan *RemoteDir) {
 
 		case remote := <-remotes:
 			// Enqueue initial job
-			queueJob(in, Job{
+			wCtx.queueJob(Job{
 				Remote: remote,
 				Uri: remote.BaseUri,
 				UriStr: remote.BaseUri.String(),

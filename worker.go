@@ -2,9 +2,11 @@ package main
 
 import (
 	"github.com/sirupsen/logrus"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var globalWait sync.WaitGroup
@@ -12,6 +14,8 @@ var globalWait sync.WaitGroup
 type WorkerContext struct {
 	in chan<- Job
 	out <-chan Job
+	lastRateLimit time.Time
+	numRateLimits int
 }
 
 func (w WorkerContext) Worker() {
@@ -21,7 +25,7 @@ func (w WorkerContext) Worker() {
 }
 
 func (w WorkerContext) step(job Job) {
-	defer finishJob(&job)
+	defer w.finishJob(&job)
 
 	var f File
 
@@ -37,14 +41,18 @@ func (w WorkerContext) step(job Job) {
 				Errorf("Giving up after %d fails", job.Fails)
 		} else {
 			atomic.AddUint64(&totalRetries, 1)
-			queueJob(w.in, job)
+			if err == ErrRateLimit {
+				w.lastRateLimit = time.Now()
+				w.numRateLimits++
+			}
+			w.queueJob(job)
 		}
 		return
 	}
 
 	atomic.AddUint64(&totalDone, 1)
 	for _, job := range newJobs {
-		queueJob(w.in, job)
+		w.queueJob(job)
 	}
 
 	job.Remote.Files = append(job.Remote.Files, f)
@@ -86,13 +94,24 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 	return
 }
 
-func queueJob(in chan<- Job, job Job) {
+func (w WorkerContext) queueJob(job Job) {
 	job.Remote.Wait.Add(1)
 	globalWait.Add(1)
-	in <- job
+
+	if w.numRateLimits > 0 {
+		if time.Since(w.lastRateLimit) > 5 * time.Second {
+			w.numRateLimits = 0
+		} else {
+			time.Sleep(time.Duration(math.Sqrt(float64(50 * w.numRateLimits))) *
+				100 * time.Millisecond)
+			w.in <- job
+		}
+	} else {
+		w.in <- job
+	}
 }
 
-func finishJob(job *Job) {
+func (w WorkerContext) finishJob(job *Job) {
 	job.Remote.Wait.Done()
 	globalWait.Done()
 }

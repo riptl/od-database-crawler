@@ -2,4 +2,5 @@ server_url: localhost:6969
 token: abc
 stats_interval: 1s
 verbose: true
-retries: 0
+retries: 5
+workers: 80

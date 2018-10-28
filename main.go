@@ -14,7 +14,7 @@ func main() {
 	remotes := make(chan *RemoteDir)
 	go Schedule(c, remotes)
 
-	u, _ := url.Parse("https://the-eye.eu/public/rom/")
+	u, _ := url.Parse("http://mine.terorie.com:420/")
 	remote := NewRemoteDir(*u)
 
 	globalWait.Add(1)
