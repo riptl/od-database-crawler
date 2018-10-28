@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/url"
+	"sync/atomic"
 )
 
 type Job struct {
@@ -12,6 +13,8 @@ type Job struct {
 	Fails int
 	LastError error
 }
+
+var activeTasks int32
 
 func Schedule(c context.Context, remotes <-chan *RemoteDir) {
 	in, out := makeJobBuffer()
@@ -32,6 +35,7 @@ func Schedule(c context.Context, remotes <-chan *RemoteDir) {
 
 		case remote := <-remotes:
 			// Enqueue initial job
+			atomic.AddInt32(&activeTasks, 1)
 			wCtx.queueJob(Job{
 				Remote: remote,
 				Uri: remote.BaseUri,
@@ -48,6 +52,7 @@ func Schedule(c context.Context, remotes <-chan *RemoteDir) {
 func (r *RemoteDir) Watch() {
 	// Wait for all jobs on remote to finish
 	r.Wait.Wait()
+	atomic.AddInt32(&activeTasks, -1)
 }
 
 func makeJobBuffer() (chan<- Job, <-chan Job) {

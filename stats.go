@@ -13,6 +13,14 @@ var totalDone uint64
 var totalRetries uint64
 var totalAborted uint64
 
+type File struct {
+	Name string `json:"name"`
+	Size int64 `json:"size"`
+	MTime time.Time `json:"mtime"`
+	Path string `json:"path"`
+	IsDir bool `json:"-"`
+}
+
 func Stats(c context.Context) {
 	var startedLast uint64 = 0
 	ticker := time.NewTicker(config.StatsInterval).C
