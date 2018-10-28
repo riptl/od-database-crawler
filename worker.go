@@ -60,7 +60,7 @@ func (w WorkerContext) step(job Job) {
 		w.queueJob(job)
 	}
 
-	job.Remote.Files = append(job.Remote.Files, f)
+	job.OD.Files = append(job.OD.Files, f)
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
@@ -75,9 +75,12 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			return nil, err
 		}
 		for _, link := range links {
-			job.Remote.Wait.Add(1)
+			if _, old := job.OD.Scanned.LoadOrStore(link, true); old {
+				continue
+			}
+			job.OD.Wait.Add(1)
 			newJobs = append(newJobs, Job{
-				Remote: job.Remote,
+				OD:     job.OD,
 				Uri:    link,
 				UriStr: link.String(),
 				Fails:  0,
@@ -100,7 +103,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 }
 
 func (w WorkerContext) queueJob(job Job) {
-	job.Remote.Wait.Add(1)
+	job.OD.Wait.Add(1)
 	globalWait.Add(1)
 
 	if w.numRateLimits > 0 {
@@ -117,6 +120,6 @@ func (w WorkerContext) queueJob(job Job) {
 }
 
 func (w WorkerContext) finishJob(job *Job) {
-	job.Remote.Wait.Done()
+	job.OD.Wait.Done()
 	globalWait.Done()
 }

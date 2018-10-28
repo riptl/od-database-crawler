@@ -11,7 +11,7 @@ var config struct {
 	Token     string
 	Retries   int
 	Workers   int
-	Tasks     int
+	Tasks     int32
 	StatsInterval time.Duration
 	Verbose   bool
 }
@@ -62,9 +62,9 @@ func readConfig() {
 		configOOB(ConfWorkers, config.Workers)
 	}
 
-	config.Tasks = viper.GetInt(ConfTasks)
+	config.Tasks = viper.GetInt32(ConfTasks)
 	if config.Tasks <= 0 {
-		configOOB(ConfTasks, config.Tasks)
+		configOOB(ConfTasks, int(config.Tasks))
 	}
 
 	config.StatsInterval = viper.GetDuration(ConfStatsInterval)

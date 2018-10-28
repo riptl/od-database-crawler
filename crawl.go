@@ -12,7 +12,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -20,15 +19,8 @@ var client fasthttp.Client
 var ErrRateLimit = errors.New("too many requests")
 var ErrForbidden = errors.New("access denied")
 
-type RemoteDir struct {
-	Wait sync.WaitGroup
-	BaseUri url.URL
-	lock sync.Mutex
-	Files []File
-}
-
-func NewRemoteDir(u url.URL) *RemoteDir {
-	return &RemoteDir{ BaseUri: u }
+func NewRemoteDir(u url.URL) *OD {
+	return &OD{ BaseUri: u }
 }
 
 func GetDir(j *Job, f *File) (links []url.URL, err error) {
