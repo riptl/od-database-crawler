@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
-	"errors"
+	"encoding/base64"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 	"net/url"
@@ -16,8 +17,6 @@ import (
 )
 
 var client fasthttp.Client
-var ErrRateLimit = errors.New("too many requests")
-var ErrForbidden = errors.New("access denied")
 
 func GetDir(j *Job, f *File) (links []url.URL, err error) {
 	f.IsDir = true
@@ -144,6 +143,18 @@ func GetFile(u url.URL, f *File) (err error) {
 	f.ParseHeader(header)
 
 	return nil
+}
+
+func (f *File) HashDir(links []url.URL) string {
+	h, _ := blake2b.New256(nil)
+	h.Write([]byte(f.Name))
+	for _, link := range links {
+		fileName := path.Base(link.Path)
+		h.Write([]byte(fileName))
+	}
+	sum := h.Sum(nil)
+	b64sum := base64.StdEncoding.EncodeToString(sum)
+	return b64sum
 }
 
 func (f *File) ParseHeader(h []byte) {

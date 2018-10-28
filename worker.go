@@ -31,6 +31,9 @@ func (w WorkerContext) step(job Job) {
 
 	newJobs, err := DoJob(&job, &f)
 	atomic.AddUint64(&totalStarted, 1)
+	if err == ErrKnown {
+		return
+	}
 
 	if err != nil {
 		job.Fails++
@@ -64,9 +67,8 @@ func (w WorkerContext) step(job Job) {
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
-	// File
 	if strings.HasSuffix(job.Uri.Path, "/") {
-		// Dir
+		// Load directory
 		links, err := GetDir(job, f)
 		if err != nil {
 			logrus.WithError(err).
@@ -74,7 +76,17 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 				Error("Failed getting dir")
 			return nil, err
 		}
+
+		// Hash directory
+		hash := f.HashDir(links)
+
+		// Skip symlinked dirs
+		if _, old := job.OD.Scanned.LoadOrStore(hash, true); old {
+			return nil, ErrKnown
+		}
+
 		for _, link := range links {
+			// Skip already queued links
 			if _, old := job.OD.Scanned.LoadOrStore(link, true); old {
 				continue
 			}
@@ -91,6 +103,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			"files": len(links),
 		}).Debug("Listed")
 	} else {
+		// Load file
 		err := GetFile(job.Uri, f)
 		if err != nil {
 			logrus.WithError(err).

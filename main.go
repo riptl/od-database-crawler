@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"net/url"
 	"os"
@@ -68,6 +69,8 @@ func cmdCrawler(clic *cli.Context) error {
 
 	// Wait for all jobs to finish
 	globalWait.Wait()
+
+	logrus.Info("All dirs processed!")
 
 	return nil
 }
