@@ -35,6 +35,11 @@ func (w WorkerContext) step(job Job) {
 	if err != nil {
 		job.Fails++
 
+		if err == ErrForbidden {
+			// Don't attempt crawling again
+			return
+		}
+
 		if job.Fails > config.Retries {
 			atomic.AddUint64(&totalAborted, 1)
 			logrus.WithField("url", job.UriStr).

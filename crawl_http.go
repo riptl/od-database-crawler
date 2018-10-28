@@ -18,6 +18,7 @@ import (
 
 var client fasthttp.Client
 var ErrRateLimit = errors.New("too many requests")
+var ErrForbidden = errors.New("access denied")
 
 type RemoteDir struct {
 	Wait sync.WaitGroup
@@ -48,16 +49,8 @@ func GetDir(j *Job, f *File) (links []url.URL, err error) {
 		return
 	}
 
-	switch res.StatusCode() {
-	case fasthttp.StatusOK:
-		break
-
-	case fasthttp.StatusTooManyRequests:
-		return nil, ErrRateLimit
-
-	default:
-		return nil, fmt.Errorf("got HTTP status %d", res.StatusCode())
-	}
+	err = checkStatusCode(res.StatusCode())
+	if err != nil { return }
 
 	body := res.Body()
 	doc := html.NewTokenizer(bytes.NewReader(body))
@@ -155,16 +148,8 @@ func GetFile(u url.URL, f *File) (err error) {
 
 	if err != nil { return }
 
-	switch res.StatusCode() {
-	case fasthttp.StatusOK:
-		break
-
-	case fasthttp.StatusTooManyRequests:
-		return ErrRateLimit
-
-	default:
-		return fmt.Errorf("got HTTP status %d", res.StatusCode())
-	}
+	err = checkStatusCode(res.StatusCode())
+	if err != nil { return }
 
 	// TODO Inefficient af
 	header := res.Header.Header()
@@ -230,6 +215,23 @@ func (f *File) applyHeader(k, v string) {
 		// TODO Parse asctime
 		f.MTime, err = time.Parse("2006-01-02", v[:10])
 		if err == nil { break }
+	}
+}
+
+func checkStatusCode(status int) error {
+	switch status {
+	case fasthttp.StatusOK:
+		return nil
+
+	case fasthttp.StatusTooManyRequests:
+		return ErrRateLimit
+
+	case fasthttp.StatusForbidden,
+		fasthttp.StatusUnauthorized:
+		return ErrForbidden
+
+	default:
+		return fmt.Errorf("got HTTP status %d", status)
 	}
 }
 
