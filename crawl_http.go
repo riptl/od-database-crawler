@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/net/html"
@@ -15,6 +17,7 @@ import (
 )
 
 var client fasthttp.Client
+var ErrRateLimit = errors.New("too many requests")
 
 type RemoteDir struct {
 	Wait sync.WaitGroup
@@ -43,6 +46,17 @@ func GetDir(j *Job, f *File) (links []url.URL, err error) {
 	if err != nil {
 		logrus.Error(err)
 		return
+	}
+
+	switch res.StatusCode() {
+	case fasthttp.StatusOK:
+		break
+
+	case fasthttp.StatusTooManyRequests:
+		return nil, ErrRateLimit
+
+	default:
+		return nil, fmt.Errorf("got HTTP status %d", res.StatusCode())
 	}
 
 	body := res.Body()
@@ -119,10 +133,6 @@ func GetDir(j *Job, f *File) (links []url.URL, err error) {
 		nextToken:
 	}
 
-	if len(links) == 0 {
-		println(string(body))
-	}
-
 	return
 }
 
@@ -144,6 +154,17 @@ func GetFile(u url.URL, f *File) (err error) {
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil { return }
+
+	switch res.StatusCode() {
+	case fasthttp.StatusOK:
+		break
+
+	case fasthttp.StatusTooManyRequests:
+		return ErrRateLimit
+
+	default:
+		return fmt.Errorf("got HTTP status %d", res.StatusCode())
+	}
 
 	// TODO Inefficient af
 	header := res.Header.Header()

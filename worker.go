@@ -31,11 +31,6 @@ func (w WorkerContext) step(job Job) {
 	if err != nil {
 		job.Fails++
 
-		logrus.WithFields(logrus.Fields{
-			"error": err.Error(),
-			"url": job.UriStr,
-		}).Warningf("Crawl error: %s", err)
-
 		if job.Fails > config.Retries {
 			atomic.AddUint64(&totalAborted, 1)
 			logrus.WithField("url", job.UriStr).
