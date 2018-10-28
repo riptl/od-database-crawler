@@ -1,23 +1,25 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
+	"context"
+	"net/url"
 )
 
-type Config struct {
-	ServerUrl string
-	Token string
-}
+func main() {
+	prepareConfig()
+	readConfig()
 
+	c := context.Background()
 
-func main2() {
-	var err error
+	remotes := make(chan *RemoteDir)
+	go Schedule(c, remotes)
 
-	viper.SetConfigName("config.yml")
-	viper.SetConfigType("yml")
-	err = viper.ReadInConfig()
-	if err != nil {
-		logrus.Fatal(err)
-	}
+	u, _ := url.Parse("http://mine.terorie.com:420/")
+	remote := NewRemoteDir(*u)
+
+	globalWait.Add(1)
+	remotes <- remote
+
+	// Wait for all jobs to finish
+	globalWait.Wait()
 }

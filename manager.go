@@ -21,13 +21,13 @@ const (
 
 var serverClient = http.DefaultClient
 
-func (c *Config) FetchTask() (t *Task, err error) {
-	escToken, _ := json.Marshal(c.Token)
+func FetchTask() (t *Task, err error) {
+	escToken, _ := json.Marshal(config.Token)
 	payload := `{"token":` + string(escToken) + `}`
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		c.ServerUrl + "/task/get",
+		config.ServerUrl + "/task/get",
 		strings.NewReader(payload))
 	if err != nil { return }
 
@@ -47,7 +47,7 @@ func (c *Config) FetchTask() (t *Task, err error) {
 	return
 }
 
-func (c *Config) PushResult(result *TaskResult) (err error) {
+func PushResult(result *TaskResult) (err error) {
 	filePath := filepath.Join(
 		".", "crawled",
 		fmt.Sprintf("%d.json", result.WebsiteId))
@@ -63,20 +63,20 @@ func (c *Config) PushResult(result *TaskResult) (err error) {
 	}
 	defer f.Close()
 
-	err = c.uploadChunks(result.WebsiteId, f)
+	err = uploadChunks(result.WebsiteId, f)
 	if err != nil {
 		logrus.Errorf("Failed to upload file list: %s", err)
-		err2 := c.CancelTask(result.WebsiteId)
+		err2 := CancelTask(result.WebsiteId)
 		if err2 != nil {
 			logrus.Error(err2)
 		}
 		return
 	}
 
-	err = c.uploadResult(result)
+	err = uploadResult(result)
 	if err != nil {
 		logrus.Errorf("Failed to upload result: %s", err)
-		err2 := c.CancelTask(result.WebsiteId)
+		err2 := CancelTask(result.WebsiteId)
 		if err2 != nil {
 			logrus.Error(err2)
 		}
@@ -86,7 +86,7 @@ func (c *Config) PushResult(result *TaskResult) (err error) {
 	return
 }
 
-func (c *Config) uploadChunks(websiteId uint64, f *os.File) (err error) {
+func uploadChunks(websiteId uint64, f *os.File) (err error) {
 	for iter := 1; iter > 0; iter++ {
 		// TODO Stream with io.Pipe?
 		var b bytes.Buffer
@@ -94,7 +94,7 @@ func (c *Config) uploadChunks(websiteId uint64, f *os.File) (err error) {
 		multi := multipart.NewWriter(&b)
 
 		// Set upload fields
-		err = multi.WriteField("token", c.Token)
+		err = multi.WriteField("token", config.Token)
 		if err != nil { return }
 		err = multi.WriteField("website_id", fmt.Sprintf("%d", websiteId))
 		if err != nil { return }
@@ -112,7 +112,7 @@ func (c *Config) uploadChunks(websiteId uint64, f *os.File) (err error) {
 
 		req, err := http.NewRequest(
 			http.MethodPost,
-			c.ServerUrl + "/task/upload",
+			config.ServerUrl + "/task/upload",
 			&b)
 		if err != nil { return err }
 
@@ -131,18 +131,18 @@ func (c *Config) uploadChunks(websiteId uint64, f *os.File) (err error) {
 	return
 }
 
-func (c *Config) uploadResult(result *TaskResult) (err error) {
+func uploadResult(result *TaskResult) (err error) {
 	resultEnc, err := json.Marshal(result)
 	if err != nil { panic(err) }
 
 	payload := url.Values {
-		"token": {c.Token},
+		"token": {config.Token},
 		"result": {string(resultEnc)},
 	}.Encode()
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		c.ServerUrl + "/task/complete",
+		config.ServerUrl + "/task/complete",
 		strings.NewReader(payload))
 	if err != nil { return }
 
@@ -157,16 +157,16 @@ func (c *Config) uploadResult(result *TaskResult) (err error) {
 	return
 }
 
-func (c *Config) CancelTask(websiteId uint64) (err error) {
+func CancelTask(websiteId uint64) (err error) {
 	form := url.Values{
-		"token": {c.Token},
+		"token": {config.Token},
 		"website_id": {strconv.FormatUint(websiteId, 10)},
 	}
 	encForm := form.Encode()
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		c.ServerUrl + "/task/cancel",
+		config.ServerUrl + "/task/cancel",
 		strings.NewReader(encForm))
 	if err != nil { return }
 
