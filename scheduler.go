@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/sirupsen/logrus"
 	"sync/atomic"
-	"time"
 )
 
 var activeTasks int32
@@ -17,14 +17,8 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 			return
 
 		case remote := <-remotes:
-			for atomic.LoadInt32(&activeTasks) > config.Tasks {
-				select {
-				case <-time.After(time.Second):
-					break
-				case <-c.Done():
-					return
-				}
-			}
+			logrus.WithField("url", remote.BaseUri.String()).
+				Info("Starting crawler")
 
 			// Spawn workers
 			remote.WCtx.in, remote.WCtx.out = makeJobBuffer(c)
@@ -53,6 +47,9 @@ func (r *OD) Watch() {
 	r.Wait.Wait()
 	close(r.WCtx.in)
 	atomic.AddInt32(&activeTasks, -1)
+
+	logrus.WithField("url", r.BaseUri.String()).
+		Info("Crawler finished")
 }
 
 func makeJobBuffer(c context.Context) (chan<- Job, <-chan Job) {
