@@ -27,15 +27,12 @@ func NewRemoteDir(u url.URL) *RemoteDir {
 	return &RemoteDir{ BaseUri: u }
 }
 
-func GetDir(u url.URL, f *File) (links []url.URL, err error) {
+func GetDir(j *Job, f *File) (links []url.URL, err error) {
 	f.IsDir = true
-	u.Path = path.Clean(u.Path)
-	// TODO Handle external links
-	f.Name = path.Base(u.Path)
-	f.Path = strings.TrimLeft(u.Path, "/")
+	f.Name = path.Base(j.Uri.Path)
 
 	req := fasthttp.AcquireRequest()
-	req.SetRequestURI(u.String())
+	req.SetRequestURI(j.Uri.String())
 
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
@@ -48,7 +45,8 @@ func GetDir(u url.URL, f *File) (links []url.URL, err error) {
 		return
 	}
 
-	doc := html.NewTokenizer(bytes.NewReader(res.Body()))
+	body := res.Body()
+	doc := html.NewTokenizer(bytes.NewReader(body))
 
 	var linkHref string
 	var linkTexts []string
@@ -105,10 +103,12 @@ func GetDir(u url.URL, f *File) (links []url.URL, err error) {
 				subref, err := url.Parse(href)
 				if err != nil { continue }
 
-				link := *u.ResolveReference(subref)
+				link := *j.Uri.ResolveReference(subref)
 
-				if link.Scheme != u.Scheme ||
-					link.Host != u.Host {
+				if link.Scheme != j.Uri.Scheme ||
+					link.Host != j.Uri.Host ||
+					link.Path == j.Uri.Path ||
+					!strings.HasPrefix(link.Path, j.Uri.Path) {
 					continue
 				}
 
@@ -117,6 +117,10 @@ func GetDir(u url.URL, f *File) (links []url.URL, err error) {
 		}
 
 		nextToken:
+	}
+
+	if len(links) == 0 {
+		println(string(body))
 	}
 
 	return

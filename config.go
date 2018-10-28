@@ -12,6 +12,7 @@ var config struct {
 	Retries   int
 	Workers   int
 	StatsInterval time.Duration
+	Verbose   bool
 }
 
 const (
@@ -20,12 +21,14 @@ const (
 	ConfRetries   = "retries"
 	ConfWorkers   = "workers"
 	ConfStatsInterval = "stats_interval"
+	ConfVerbose   = "verbose"
 )
 
 func prepareConfig() {
 	viper.SetDefault(ConfRetries, 3)
 	viper.SetDefault(ConfWorkers, 50)
 	viper.SetDefault(ConfStatsInterval, 3 * time.Second)
+	viper.SetDefault(ConfVerbose, false)
 }
 
 func readConfig() {
@@ -57,4 +60,9 @@ func readConfig() {
 	}
 
 	config.StatsInterval = viper.GetDuration(ConfStatsInterval)
+
+	config.Verbose = viper.GetBool(ConfVerbose)
+	if config.Verbose {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 }

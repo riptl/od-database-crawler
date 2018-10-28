@@ -59,7 +59,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 	// File
 	if strings.HasSuffix(job.Uri.Path, "/") {
 		// Dir
-		links, err := GetDir(job.Uri, f)
+		links, err := GetDir(job, f)
 		if err != nil {
 			logrus.WithError(err).
 				WithField("url", job.Uri.String()).
@@ -75,6 +75,10 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 				Fails:  0,
 			})
 		}
+		logrus.WithFields(logrus.Fields{
+			"url": job.UriStr,
+			"files": len(links),
+		}).Debug("Listed")
 	} else {
 		err := GetFile(job.Uri, f)
 		if err != nil {
