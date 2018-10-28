@@ -1,6 +1,24 @@
-server_url: localhost:6969
-token: abc
-stats_interval: 1s
-verbose: true
-retries: 5
-workers: 80
+# OD-Database server settings
+server:
+  # Connection URL
+  url: localhost:6969
+  # Server auth token
+  token:
+
+# Log output settings
+output:
+  # Statistics printing interval
+  stats_interval: 1s
+  # More output? (Every listed dir)
+  verbose: false
+
+# Crawler settings
+crawl:
+  # Number of sites that can be
+  # processed at once
+  tasks: 3
+  # Number of connections per site
+  connections: 2
+  # How often to retry getting data
+  # from the site before giving up
+  retries: 5

@@ -11,22 +11,25 @@ var config struct {
 	Token     string
 	Retries   int
 	Workers   int
+	Tasks     int
 	StatsInterval time.Duration
 	Verbose   bool
 }
 
 const (
-	ConfServerUrl = "server_url"
-	ConfToken     = "token"
-	ConfRetries   = "retries"
-	ConfWorkers   = "workers"
-	ConfStatsInterval = "stats_interval"
-	ConfVerbose   = "verbose"
+	ConfServerUrl = "server.url"
+	ConfToken     = "server.token"
+	ConfTasks     = "crawl.tasks"
+	ConfRetries   = "crawl.retries"
+	ConfWorkers   = "crawl.connections"
+	ConfStatsInterval = "output.stats_interval"
+	ConfVerbose   = "output.verbose"
 )
 
 func prepareConfig() {
-	viper.SetDefault(ConfRetries, 3)
-	viper.SetDefault(ConfWorkers, 50)
+	viper.SetDefault(ConfRetries, 5)
+	viper.SetDefault(ConfWorkers, 2)
+	viper.SetDefault(ConfTasks, 3)
 	viper.SetDefault(ConfStatsInterval, 3 * time.Second)
 	viper.SetDefault(ConfVerbose, false)
 }
@@ -41,12 +44,12 @@ func readConfig() {
 
 	config.ServerUrl = viper.GetString(ConfServerUrl)
 	if config.ServerUrl == "" {
-		logrus.Fatal("config: server_url not set!")
+		configMissing(ConfServerUrl)
 	}
 
 	config.Token = viper.GetString(ConfToken)
 	if config.Token == "" {
-		logrus.Fatal("config: token not set!")
+		configMissing(ConfToken)
 	}
 
 	config.Retries = viper.GetInt(ConfRetries)
@@ -56,7 +59,12 @@ func readConfig() {
 
 	config.Workers = viper.GetInt(ConfWorkers)
 	if config.Workers <= 0 {
-		logrus.Fatal("config: illegal value %d for workers!", config.Workers)
+		configOOB(ConfWorkers, config.Workers)
+	}
+
+	config.Tasks = viper.GetInt(ConfTasks)
+	if config.Tasks <= 0 {
+		configOOB(ConfTasks, config.Tasks)
 	}
 
 	config.StatsInterval = viper.GetDuration(ConfStatsInterval)
@@ -65,4 +73,12 @@ func readConfig() {
 	if config.Verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
+}
+
+func configMissing(key string) {
+	logrus.Fatalf("config: %s not set!", key)
+}
+
+func configOOB(key string, v int) {
+	logrus.Fatal("config: illegal value %d for %key!", v, key)
 }
