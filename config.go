@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"time"
 )
 
 var config struct {
@@ -10,6 +11,7 @@ var config struct {
 	Token     string
 	Retries   int
 	Workers   int
+	StatsInterval time.Duration
 }
 
 const (
@@ -17,11 +19,13 @@ const (
 	ConfToken     = "token"
 	ConfRetries   = "retries"
 	ConfWorkers   = "workers"
+	ConfStatsInterval = "stats_interval"
 )
 
 func prepareConfig() {
 	viper.SetDefault(ConfRetries, 3)
 	viper.SetDefault(ConfWorkers, 50)
+	viper.SetDefault(ConfStatsInterval, 3 * time.Second)
 }
 
 func readConfig() {
@@ -51,4 +55,6 @@ func readConfig() {
 	if config.Workers <= 0 {
 		logrus.Fatal("config: illegal value %d for workers!", config.Workers)
 	}
+
+	config.StatsInterval = viper.GetDuration(ConfStatsInterval)
 }

@@ -7,11 +7,6 @@ import (
 	"sync/atomic"
 )
 
-var totalStarted uint64
-var totalDone uint64
-var totalRetries uint64
-var totalAborted uint64
-
 var globalWait sync.WaitGroup
 
 type WorkerContext struct {

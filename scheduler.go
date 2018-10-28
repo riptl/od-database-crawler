@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"net/url"
-	"sync/atomic"
-	"time"
 )
 
 type Job struct {
@@ -47,28 +44,6 @@ func Schedule(c context.Context, remotes <-chan *RemoteDir) {
 func (r *RemoteDir) Watch() {
 	// Wait for all jobs on remote to finish
 	r.Wait.Wait()
-}
-
-func Stats(c context.Context) {
-	var startedLast uint64 = 0
-	ticker := time.NewTicker(time.Second).C
-	for {
-		select {
-		case <-ticker:
-			startedNow := atomic.LoadUint64(&totalStarted)
-			logrus.WithFields(logrus.Fields{
-				"per_second": startedNow - startedLast,
-				"done":    atomic.LoadUint64(&totalDone),
-				"retries": atomic.LoadUint64(&totalRetries),
-				"aborted": atomic.LoadUint64(&totalAborted),
-			}).Info("Stats")
-
-			startedLast = startedNow
-
-		case <-c.Done():
-			return
-		}
-	}
 }
 
 func makeJobBuffer() (chan<- Job, <-chan Job) {
