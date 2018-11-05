@@ -4,6 +4,9 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"strings"
@@ -33,6 +36,9 @@ func init() {
 
 func main() {
 	app.Run(os.Args)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:42069", nil))
+	}()
 }
 
 func cmdCrawler(clic *cli.Context) error {
