@@ -457,20 +457,20 @@ func split(s string, c string, cutc bool) (string, string) {
 // (starting with a scheme). Trying to parse a hostname and path
 // without a scheme is invalid but may not necessarily return an
 // error, due to parsing ambiguities.
-func Parse(rawurl string) (*URL, error) {
+func (u *URL) Parse(rawurl string) error {
 	// Cut off #frag
-	u, frag := split(rawurl, "#", true)
-	url, err := parse(u, false)
+	s, frag := split(rawurl, "#", true)
+	err := u.parse(s, false)
 	if err != nil {
-		return nil, &Error{"parse", u, err}
+		return &Error{"parse", s, err}
 	}
 	if frag == "" {
-		return url, nil
+		return nil
 	}
-	if url.Fragment, err = unescape(frag, encodeFragment); err != nil {
-		return nil, &Error{"parse", rawurl, err}
+	if u.Fragment, err = unescape(frag, encodeFragment); err != nil {
+		return &Error{"parse", rawurl, err}
 	}
-	return url, nil
+	return nil
 }
 
 // ParseRequestURI parses rawurl into a URL structure. It assumes that
@@ -478,54 +478,53 @@ func Parse(rawurl string) (*URL, error) {
 // only as an absolute URI or an absolute path.
 // The string rawurl is assumed not to have a #fragment suffix.
 // (Web browsers strip #fragment before sending the URL to a web server.)
-func ParseRequestURI(rawurl string) (*URL, error) {
-	url, err := parse(rawurl, true)
+func (u *URL) ParseRequestURI(rawurl string) error {
+	err := u.parse(rawurl, true)
 	if err != nil {
-		return nil, &Error{"parse", rawurl, err}
+		return &Error{"parse", rawurl, err}
 	}
-	return url, nil
+	return nil
 }
 
 // parse parses a URL from a string in one of two contexts. If
 // viaRequest is true, the URL is assumed to have arrived via an HTTP request,
 // in which case only absolute URLs or path-absolute relative URLs are allowed.
 // If viaRequest is false, all forms of relative URLs are allowed.
-func parse(rawurl string, viaRequest bool) (*URL, error) {
+func (u *URL) parse(rawurl string, viaRequest bool) error {
 	var rest string
 	var err error
 
 	if rawurl == "" && viaRequest {
-		return nil, errors.New("empty url")
+		return errors.New("empty url")
 	}
-	url := new(URL)
 
 	if rawurl == "*" {
-		url.Path = "*"
-		return url, nil
+		u.Path = "*"
+		return nil
 	}
 
 	// Split off possible leading "http:", "mailto:", etc.
 	// Cannot contain escaped characters.
-	if url.Scheme, rest, err = getscheme(rawurl); err != nil {
-		return nil, err
+	if u.Scheme, rest, err = getscheme(rawurl); err != nil {
+		return err
 	}
-	url.Scheme = strings.ToLower(url.Scheme)
+	u.Scheme = strings.ToLower(u.Scheme)
 
 	if strings.HasSuffix(rest, "?") && strings.Count(rest, "?") == 1 {
-		url.ForceQuery = true
+		u.ForceQuery = true
 		rest = rest[:len(rest)-1]
 	} else {
-		rest, url.RawQuery = split(rest, "?", true)
+		rest, u.RawQuery = split(rest, "?", true)
 	}
 
 	if !strings.HasPrefix(rest, "/") {
-		if url.Scheme != "" {
+		if u.Scheme != "" {
 			// We consider rootless paths per RFC 3986 as opaque.
-			url.Opaque = rest
-			return url, nil
+			u.Opaque = rest
+			return nil
 		}
 		if viaRequest {
-			return nil, errors.New("invalid URI for request")
+			return errors.New("invalid URI for request")
 		}
 
 		// Avoid confusion with malformed schemes, like cache_object:foo/bar.
@@ -538,26 +537,26 @@ func parse(rawurl string, viaRequest bool) (*URL, error) {
 		slash := strings.Index(rest, "/")
 		if colon >= 0 && (slash < 0 || colon < slash) {
 			// First path segment has colon. Not allowed in relative URL.
-			return nil, errors.New("first path segment in URL cannot contain colon")
+			return errors.New("first path segment in URL cannot contain colon")
 		}
 	}
 
-	if (url.Scheme != "" || !viaRequest && !strings.HasPrefix(rest, "///")) && strings.HasPrefix(rest, "//") {
+	if (u.Scheme != "" || !viaRequest && !strings.HasPrefix(rest, "///")) && strings.HasPrefix(rest, "//") {
 		var authority string
 		authority, rest = split(rest[2:], "/", false)
-		url.User, url.Host, err = parseAuthority(authority)
+		u.User, u.Host, err = parseAuthority(authority)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	// Set Path and, optionally, RawPath.
 	// RawPath is a hint of the encoding of Path. We don't want to set it if
 	// the default escaping of Path is equivalent, to help make sure that people
 	// don't rely on it in general.
-	if err := url.setPath(rest); err != nil {
-		return nil, err
+	if err := u.setPath(rest); err != nil {
+		return err
 	}
-	return url, nil
+	return nil
 }
 
 func parseAuthority(authority string) (user *Userinfo, host string, err error) {
@@ -953,15 +952,19 @@ func (u *URL) IsAbs() bool {
 	return u.Scheme != ""
 }
 
-// Parse parses a URL in the context of the receiver. The provided URL
+// ParseRel parses a URL in the context of the receiver. The provided URL
 // may be relative or absolute. Parse returns nil, err on parse
 // failure, otherwise its return value is the same as ResolveReference.
-func (u *URL) Parse(ref string) (*URL, error) {
-	refurl, err := Parse(ref)
+func (u *URL) ParseRel(out *URL, ref string) error {
+	var refurl URL
+
+	err := refurl.Parse(ref)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return u.ResolveReference(refurl), nil
+
+	u.ResolveReference(out, &refurl)
+	return nil
 }
 
 // ResolveReference resolves a URI reference to an absolute URI from
@@ -970,8 +973,8 @@ func (u *URL) Parse(ref string) (*URL, error) {
 // URL instance, even if the returned URL is identical to either the
 // base or reference. If ref is an absolute URL, then ResolveReference
 // ignores base and returns a copy of ref.
-func (u *URL) ResolveReference(ref *URL) *URL {
-	url := *ref
+func (u *URL) ResolveReference(url *URL, ref *URL) {
+	*url = *ref
 	if ref.Scheme == "" {
 		url.Scheme = u.Scheme
 	}
@@ -980,13 +983,13 @@ func (u *URL) ResolveReference(ref *URL) *URL {
 		// We can ignore the error from setPath since we know we provided a
 		// validly-escaped path.
 		url.setPath(resolvePath(ref.EscapedPath(), ""))
-		return &url
+		return
 	}
 	if ref.Opaque != "" {
 		url.User = nil
 		url.Host = ""
 		url.Path = ""
-		return &url
+		return
 	}
 	if ref.Path == "" && ref.RawQuery == "" {
 		url.RawQuery = u.RawQuery
@@ -998,7 +1001,7 @@ func (u *URL) ResolveReference(ref *URL) *URL {
 	url.Host = u.Host
 	url.User = u.User
 	url.setPath(resolvePath(u.EscapedPath(), ref.EscapedPath()))
-	return &url
+	return
 }
 
 // Query parses RawQuery and returns the corresponding values.
@@ -1077,11 +1080,12 @@ func (u *URL) MarshalBinary() (text []byte, err error) {
 }
 
 func (u *URL) UnmarshalBinary(text []byte) error {
-	u1, err := Parse(string(text))
+	var u1 URL
+	err := u1.Parse(string(text))
 	if err != nil {
 		return err
 	}
-	*u = *u1
+	*u = u1
 	return nil
 }
 
