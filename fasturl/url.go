@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package url parses URLs and implements query escaping.
+// Package fasturl parses URLs and implements query escaping.
 package fasturl
+
+// Modifications by terorie
 
 // See RFC 3986. This package generally follows RFC 3986, except where
 // it deviates for compatibility reasons. When sending changes, first
@@ -17,6 +19,20 @@ import (
 	"strconv"
 	"strings"
 )
+
+type Scheme int
+const (
+	SchemeInvalid = iota
+	SchemeHTTP
+	SchemeHTTPS
+	SchemeCount
+)
+
+var Schemes = [SchemeCount]string {
+	"",
+	"http",
+	"https",
+}
 
 // Error reports an error and the operation and URL that caused it.
 type Error struct {
@@ -342,7 +358,7 @@ func escape(s string, mode encoding) string {
 // and URL's String method uses RawPath if it is a valid encoding of Path,
 // by calling the EscapedPath method.
 type URL struct {
-	Scheme     string
+	Scheme     Scheme
 	Opaque     string    // encoded opaque data
 	User       *Userinfo // username and password information
 	Host       string    // host or host:port
@@ -413,7 +429,7 @@ func (u *Userinfo) String() string {
 // Maybe rawurl is of the form scheme:path.
 // (Scheme must be [a-zA-Z][a-zA-Z0-9+-.]*)
 // If so, return scheme, path; else return "", rawurl.
-func getscheme(rawurl string) (scheme, path string, err error) {
+func getscheme(rawurl string) (scheme Scheme, path string, err error) {
 	for i := 0; i < len(rawurl); i++ {
 		c := rawurl[i]
 		switch {
@@ -421,20 +437,30 @@ func getscheme(rawurl string) (scheme, path string, err error) {
 			// do nothing
 		case '0' <= c && c <= '9' || c == '+' || c == '-' || c == '.':
 			if i == 0 {
-				return "", rawurl, nil
+				return SchemeInvalid, rawurl, nil
 			}
 		case c == ':':
 			if i == 0 {
-				return "", "", errors.New("missing protocol scheme")
+				return SchemeInvalid, "", errors.New("missing protocol scheme")
 			}
-			return rawurl[:i], rawurl[i+1:], nil
+			switch rawurl[:i] {
+			case "http":
+				scheme = SchemeHTTP
+			case "https":
+				scheme = SchemeHTTPS
+			default:
+				return SchemeInvalid, "", errors.New("unknown protocol scheme")
+			}
+
+			path = rawurl[i+1:]
+			return
 		default:
 			// we have encountered an invalid character,
 			// so there is no valid scheme
-			return "", rawurl, nil
+			return SchemeInvalid, rawurl, nil
 		}
 	}
-	return "", rawurl, nil
+	return SchemeInvalid, rawurl, nil
 }
 
 // Maybe s is of the form t c u.
@@ -508,7 +534,6 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	if u.Scheme, rest, err = getscheme(rawurl); err != nil {
 		return err
 	}
-	u.Scheme = strings.ToLower(u.Scheme)
 
 	if strings.HasSuffix(rest, "?") && strings.Count(rest, "?") == 1 {
 		u.ForceQuery = true
@@ -518,7 +543,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	}
 
 	if !strings.HasPrefix(rest, "/") {
-		if u.Scheme != "" {
+		if u.Scheme != SchemeInvalid {
 			// We consider rootless paths per RFC 3986 as opaque.
 			u.Opaque = rest
 			return nil
@@ -541,7 +566,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 		}
 	}
 
-	if (u.Scheme != "" || !viaRequest && !strings.HasPrefix(rest, "///")) && strings.HasPrefix(rest, "//") {
+	if (u.Scheme != SchemeInvalid || !viaRequest && !strings.HasPrefix(rest, "///")) && strings.HasPrefix(rest, "//") {
 		var authority string
 		authority, rest = split(rest[2:], "/", false)
 		u.User, u.Host, err = parseAuthority(authority)
@@ -749,14 +774,14 @@ func validOptionalPort(port string) bool {
 //	- if u.Fragment is empty, #fragment is omitted.
 func (u *URL) String() string {
 	var buf strings.Builder
-	if u.Scheme != "" {
-		buf.WriteString(u.Scheme)
+	if u.Scheme != SchemeInvalid {
+		buf.WriteString(Schemes[u.Scheme])
 		buf.WriteByte(':')
 	}
 	if u.Opaque != "" {
 		buf.WriteString(u.Opaque)
 	} else {
-		if u.Scheme != "" || u.Host != "" || u.User != nil {
+		if u.Scheme != SchemeInvalid || u.Host != "" || u.User != nil {
 			if u.Host != "" || u.Path != "" || u.User != nil {
 				buf.WriteString("//")
 			}
@@ -949,7 +974,7 @@ func resolvePath(base, ref string) string {
 // IsAbs reports whether the URL is absolute.
 // Absolute means that it has a non-empty scheme.
 func (u *URL) IsAbs() bool {
-	return u.Scheme != ""
+	return u.Scheme != SchemeInvalid
 }
 
 // ParseRel parses a URL in the context of the receiver. The provided URL
@@ -975,10 +1000,10 @@ func (u *URL) ParseRel(out *URL, ref string) error {
 // ignores base and returns a copy of ref.
 func (u *URL) ResolveReference(url *URL, ref *URL) {
 	*url = *ref
-	if ref.Scheme == "" {
+	if ref.Scheme == SchemeInvalid {
 		url.Scheme = u.Scheme
 	}
-	if ref.Scheme != "" || ref.Host != "" || ref.User != nil {
+	if ref.Scheme != SchemeInvalid || ref.Host != "" || ref.User != nil {
 		// The "absoluteURI" or "net_path" cases.
 		// We can ignore the error from setPath since we know we provided a
 		// validly-escaped path.
@@ -1023,7 +1048,7 @@ func (u *URL) RequestURI() string {
 		}
 	} else {
 		if strings.HasPrefix(result, "//") {
-			result = u.Scheme + ":" + result
+			result = Schemes[u.Scheme] + ":" + result
 		}
 	}
 	if u.ForceQuery || u.RawQuery != "" {
