@@ -35,10 +35,10 @@ func init() {
 }
 
 func main() {
-	app.Run(os.Args)
 	go func() {
 		log.Println(http.ListenAndServe("localhost:42069", nil))
 	}()
+	app.Run(os.Args)
 }
 
 func cmdCrawler(clic *cli.Context) error {
