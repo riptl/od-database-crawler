@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"math"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,8 +11,8 @@ import (
 var globalWait sync.WaitGroup
 
 type WorkerContext struct {
-	in chan<- Job
-	out <-chan Job
+	in            chan<- Job
+	out           <-chan Job
 	lastRateLimit time.Time
 	numRateLimits int
 }
@@ -67,7 +66,7 @@ func (w WorkerContext) step(job Job) {
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
-	if strings.HasSuffix(job.Uri.Path, "/") {
+	if job.Uri.Path[len(job.Uri.Path)-1] == '/' {
 		// Load directory
 		links, err := GetDir(job, f)
 		if err != nil {
@@ -99,7 +98,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			})
 		}
 		logrus.WithFields(logrus.Fields{
-			"url": job.UriStr,
+			"url":   job.UriStr,
 			"files": len(links),
 		}).Debug("Listed")
 	} else {
@@ -120,10 +119,10 @@ func (w WorkerContext) queueJob(job Job) {
 	globalWait.Add(1)
 
 	if w.numRateLimits > 0 {
-		if time.Since(w.lastRateLimit) > 5 * time.Second {
+		if time.Since(w.lastRateLimit) > 5*time.Second {
 			w.numRateLimits = 0
 		} else {
-			time.Sleep(time.Duration(math.Sqrt(float64(50 * w.numRateLimits))) *
+			time.Sleep(time.Duration(math.Sqrt(float64(50*w.numRateLimits))) *
 				100 * time.Millisecond)
 			w.in <- job
 		}
