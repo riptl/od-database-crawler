@@ -366,7 +366,6 @@ type URL struct {
 	RawPath    string    // encoded path hint (see EscapedPath method)
 	ForceQuery bool      // append a query ('?') even if RawQuery is empty
 	RawQuery   string    // encoded query values, without '?'
-	Fragment   string    // fragment for references, without '#'
 }
 
 // User returns a Userinfo containing the provided username
@@ -492,9 +491,6 @@ func (u *URL) Parse(rawurl string) error {
 	}
 	if frag == "" {
 		return nil
-	}
-	if u.Fragment, err = unescape(frag, encodeFragment); err != nil {
-		return &Error{"parse", rawurl, err}
 	}
 	return nil
 }
@@ -814,10 +810,6 @@ func (u *URL) String() string {
 		buf.WriteByte('?')
 		buf.WriteString(u.RawQuery)
 	}
-	if u.Fragment != "" {
-		buf.WriteByte('#')
-		buf.WriteString(escape(u.Fragment, encodeFragment))
-	}
 	return buf.String()
 }
 
@@ -1018,9 +1010,6 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	}
 	if ref.Path == "" && ref.RawQuery == "" {
 		url.RawQuery = u.RawQuery
-		if ref.Fragment == "" {
-			url.Fragment = u.Fragment
-		}
 	}
 	// The "abs_path" or "rel_path" cases.
 	url.Host = u.Host
