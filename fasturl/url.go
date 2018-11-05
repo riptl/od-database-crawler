@@ -360,69 +360,12 @@ func escape(s string, mode encoding) string {
 type URL struct {
 	Scheme     Scheme
 	Opaque     string    // encoded opaque data
-	User       *Userinfo // username and password information
+	UserInfo   string
 	Host       string    // host or host:port
 	Path       string    // path (relative paths may omit leading slash)
 	RawPath    string    // encoded path hint (see EscapedPath method)
 	ForceQuery bool      // append a query ('?') even if RawQuery is empty
 	RawQuery   string    // encoded query values, without '?'
-}
-
-// User returns a Userinfo containing the provided username
-// and no password set.
-func User(username string) *Userinfo {
-	return &Userinfo{username, "", false}
-}
-
-// UserPassword returns a Userinfo containing the provided username
-// and password.
-//
-// This functionality should only be used with legacy web sites.
-// RFC 2396 warns that interpreting Userinfo this way
-// ``is NOT RECOMMENDED, because the passing of authentication
-// information in clear text (such as URI) has proven to be a
-// security risk in almost every case where it has been used.''
-func UserPassword(username, password string) *Userinfo {
-	return &Userinfo{username, password, true}
-}
-
-// The Userinfo type is an immutable encapsulation of username and
-// password details for a URL. An existing Userinfo value is guaranteed
-// to have a username set (potentially empty, as allowed by RFC 2396),
-// and optionally a password.
-type Userinfo struct {
-	username    string
-	password    string
-	passwordSet bool
-}
-
-// Username returns the username.
-func (u *Userinfo) Username() string {
-	if u == nil {
-		return ""
-	}
-	return u.username
-}
-
-// Password returns the password in case it is set, and whether it is set.
-func (u *Userinfo) Password() (string, bool) {
-	if u == nil {
-		return "", false
-	}
-	return u.password, u.passwordSet
-}
-
-// String returns the encoded userinfo information in the standard form
-// of "username[:password]".
-func (u *Userinfo) String() string {
-	if u == nil {
-		return ""
-	}
-	s := escape(u.username, encodeUserPassword)
-	if u.passwordSet {
-		s += ":" + escape(u.password, encodeUserPassword)
-	}
-	return s
 }
 
 // Maybe rawurl is of the form scheme:path.
@@ -565,7 +508,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	if (u.Scheme != SchemeInvalid || !viaRequest && !strings.HasPrefix(rest, "///")) && strings.HasPrefix(rest, "//") {
 		var authority string
 		authority, rest = split(rest[2:], "/", false)
-		u.User, u.Host, err = parseAuthority(authority)
+		u.UserInfo, u.Host, err = parseAuthority(authority)
 		if err != nil {
 			return err
 		}
@@ -580,7 +523,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	return nil
 }
 
-func parseAuthority(authority string) (user *Userinfo, host string, err error) {
+func parseAuthority(authority string) (userInfo string, host string, err error) {
 	i := strings.LastIndex(authority, "@")
 	if i < 0 {
 		host, err = parseHost(authority)
@@ -588,31 +531,16 @@ func parseAuthority(authority string) (user *Userinfo, host string, err error) {
 		host, err = parseHost(authority[i+1:])
 	}
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 	if i < 0 {
-		return nil, host, nil
+		return "", host, nil
 	}
 	userinfo := authority[:i]
 	if !validUserinfo(userinfo) {
-		return nil, "", errors.New("net/url: invalid userinfo")
+		return "", "", errors.New("fasturl: invalid userinfo")
 	}
-	if !strings.Contains(userinfo, ":") {
-		if userinfo, err = unescape(userinfo, encodeUserPassword); err != nil {
-			return nil, "", err
-		}
-		user = User(userinfo)
-	} else {
-		username, password := split(userinfo, ":", true)
-		if username, err = unescape(username, encodeUserPassword); err != nil {
-			return nil, "", err
-		}
-		if password, err = unescape(password, encodeUserPassword); err != nil {
-			return nil, "", err
-		}
-		user = UserPassword(username, password)
-	}
-	return user, host, nil
+	return userInfo, host, nil
 }
 
 // parseHost parses host as an authority without user
@@ -777,12 +705,12 @@ func (u *URL) String() string {
 	if u.Opaque != "" {
 		buf.WriteString(u.Opaque)
 	} else {
-		if u.Scheme != SchemeInvalid || u.Host != "" || u.User != nil {
-			if u.Host != "" || u.Path != "" || u.User != nil {
+		if u.Scheme != SchemeInvalid || u.Host != "" || u.UserInfo != "" {
+			if u.Host != "" || u.Path != "" || u.UserInfo != "" {
 				buf.WriteString("//")
 			}
-			if ui := u.User; ui != nil {
-				buf.WriteString(ui.String())
+			if u.UserInfo != "" {
+				buf.WriteString(u.UserInfo)
 				buf.WriteByte('@')
 			}
 			if h := u.Host; h != "" {
@@ -995,7 +923,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	if ref.Scheme == SchemeInvalid {
 		url.Scheme = u.Scheme
 	}
-	if ref.Scheme != SchemeInvalid || ref.Host != "" || ref.User != nil {
+	if ref.Scheme != SchemeInvalid || ref.Host != "" || ref.UserInfo != "" {
 		// The "absoluteURI" or "net_path" cases.
 		// We can ignore the error from setPath since we know we provided a
 		// validly-escaped path.
@@ -1003,7 +931,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 		return
 	}
 	if ref.Opaque != "" {
-		url.User = nil
+		url.UserInfo = ""
 		url.Host = ""
 		url.Path = ""
 		return
@@ -1013,7 +941,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	}
 	// The "abs_path" or "rel_path" cases.
 	url.Host = u.Host
-	url.User = u.User
+	url.UserInfo = u.UserInfo
 	url.setPath(resolvePath(u.EscapedPath(), ref.EscapedPath()))
 	return
 }
