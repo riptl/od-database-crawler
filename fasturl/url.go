@@ -360,7 +360,6 @@ func escape(s string, mode encoding) string {
 type URL struct {
 	Scheme     Scheme
 	Opaque     string    // encoded opaque data
-	UserInfo   string
 	Host       string    // host or host:port
 	Path       string    // path (relative paths may omit leading slash)
 	RawPath    string    // encoded path hint (see EscapedPath method)
@@ -508,7 +507,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	if (u.Scheme != SchemeInvalid || !viaRequest && !strings.HasPrefix(rest, "///")) && strings.HasPrefix(rest, "//") {
 		var authority string
 		authority, rest = split(rest[2:], "/", false)
-		u.UserInfo, u.Host, err = parseAuthority(authority)
+		u.Host, err = parseAuthority(authority)
 		if err != nil {
 			return err
 		}
@@ -523,7 +522,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	return nil
 }
 
-func parseAuthority(authority string) (userInfo string, host string, err error) {
+func parseAuthority(authority string) (host string, err error) {
 	i := strings.LastIndex(authority, "@")
 	if i < 0 {
 		host, err = parseHost(authority)
@@ -531,16 +530,16 @@ func parseAuthority(authority string) (userInfo string, host string, err error) 
 		host, err = parseHost(authority[i+1:])
 	}
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	if i < 0 {
-		return "", host, nil
+		return host, nil
 	}
 	userinfo := authority[:i]
 	if !validUserinfo(userinfo) {
-		return "", "", errors.New("fasturl: invalid userinfo")
+		return "", errors.New("fasturl: invalid userinfo")
 	}
-	return userInfo, host, nil
+	return host, nil
 }
 
 // parseHost parses host as an authority without user
@@ -705,13 +704,9 @@ func (u *URL) String() string {
 	if u.Opaque != "" {
 		buf.WriteString(u.Opaque)
 	} else {
-		if u.Scheme != SchemeInvalid || u.Host != "" || u.UserInfo != "" {
-			if u.Host != "" || u.Path != "" || u.UserInfo != "" {
+		if u.Scheme != SchemeInvalid || u.Host != "" {
+			if u.Host != "" || u.Path != "" {
 				buf.WriteString("//")
-			}
-			if u.UserInfo != "" {
-				buf.WriteString(u.UserInfo)
-				buf.WriteByte('@')
 			}
 			if h := u.Host; h != "" {
 				buf.WriteString(escape(h, encodeHost))
@@ -923,7 +918,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	if ref.Scheme == SchemeInvalid {
 		url.Scheme = u.Scheme
 	}
-	if ref.Scheme != SchemeInvalid || ref.Host != "" || ref.UserInfo != "" {
+	if ref.Scheme != SchemeInvalid || ref.Host != "" {
 		// The "absoluteURI" or "net_path" cases.
 		// We can ignore the error from setPath since we know we provided a
 		// validly-escaped path.
@@ -931,7 +926,6 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 		return
 	}
 	if ref.Opaque != "" {
-		url.UserInfo = ""
 		url.Host = ""
 		url.Path = ""
 		return
@@ -941,7 +935,6 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	}
 	// The "abs_path" or "rel_path" cases.
 	url.Host = u.Host
-	url.UserInfo = u.UserInfo
 	url.setPath(resolvePath(u.EscapedPath(), ref.EscapedPath()))
 	return
 }
