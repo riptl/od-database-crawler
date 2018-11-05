@@ -66,7 +66,7 @@ func (w WorkerContext) step(job Job) {
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
-	if job.Uri.Path[len(job.Uri.Path)-1] == '/' {
+	if len(job.Uri.Path) != 0 && job.Uri.Path[len(job.Uri.Path)-1] == '/' {
 		// Load directory
 		links, err := GetDir(job, f)
 		if err != nil {
