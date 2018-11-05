@@ -9,30 +9,33 @@ import (
 )
 
 var config struct {
-	ServerUrl string
-	Token     string
-	Retries   int
-	Workers   int
-	Tasks     int32
-	StatsInterval time.Duration
-	Verbose   bool
+	ServerUrl  string
+	Token      string
+	Retries    int
+	Workers    int
+	Tasks      int32
+	CrawlStats time.Duration
+	AllocStats time.Duration
+	Verbose    bool
 }
 
 const (
-	ConfServerUrl = "server.url"
-	ConfToken     = "server.token"
-	ConfTasks     = "crawl.tasks"
-	ConfRetries   = "crawl.retries"
-	ConfWorkers   = "crawl.connections"
-	ConfStatsInterval = "output.stats_interval"
-	ConfVerbose   = "output.verbose"
+	ConfServerUrl  = "server.url"
+	ConfToken      = "server.token"
+	ConfTasks      = "crawl.tasks"
+	ConfRetries    = "crawl.retries"
+	ConfWorkers    = "crawl.connections"
+	ConfCrawlStats = "output.crawl_stats"
+	ConfAllocStats = "output.resource_stats"
+	ConfVerbose    = "output.verbose"
 )
 
 func prepareConfig() {
 	viper.SetDefault(ConfRetries, 5)
 	viper.SetDefault(ConfWorkers, 2)
 	viper.SetDefault(ConfTasks, 3)
-	viper.SetDefault(ConfStatsInterval, 3 * time.Second)
+	viper.SetDefault(ConfCrawlStats, 3 * time.Second)
+	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
 }
 
@@ -70,7 +73,9 @@ func readConfig() {
 		configOOB(ConfTasks, int(config.Tasks))
 	}
 
-	config.StatsInterval = viper.GetDuration(ConfStatsInterval)
+	config.CrawlStats = viper.GetDuration(ConfCrawlStats)
+
+	config.AllocStats = viper.GetDuration(ConfAllocStats)
 
 	config.Verbose = viper.GetBool(ConfVerbose)
 	if config.Verbose {

@@ -7,6 +7,7 @@ import (
 )
 
 var activeTasks int32
+var totalBuffered int64
 
 func Schedule(c context.Context, remotes <-chan *OD) {
 	go Stats(c)
@@ -75,6 +76,7 @@ func bufferJobs(c context.Context, in chan Job, out chan Job) {
 				if !ok {
 					in = nil
 				} else {
+					atomic.AddInt64(&totalBuffered, 1)
 					inQueue = append(inQueue, v)
 				}
 			case <-c.Done():
@@ -86,9 +88,11 @@ func bufferJobs(c context.Context, in chan Job, out chan Job) {
 				if !ok {
 					in = nil
 				} else {
+					atomic.AddInt64(&totalBuffered, 1)
 					inQueue = append(inQueue, v)
 				}
 			case outCh() <- inQueue[0]:
+				atomic.AddInt64(&totalBuffered, -1)
 				inQueue = inQueue[1:]
 			case <-c.Done():
 				return

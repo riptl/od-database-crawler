@@ -7,8 +7,10 @@ server:
 
 # Log output settings
 output:
-  # Statistics printing interval
-  stats_interval: 1s
+  # Crawl statistics
+  crawl_stats: 1s
+  # CPU/RAM/Job queue stats
+  resource_stats: 1s
   # More output? (Every listed dir)
   verbose: false
 
