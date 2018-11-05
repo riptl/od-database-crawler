@@ -1,14 +1,15 @@
 package main
 
 import (
-	"net/url"
+	"github.com/terorie/oddb-go/ds/redblackhash"
+	"github.com/terorie/oddb-go/fasturl"
 	"sync"
 	"time"
 )
 
 type Job struct {
 	OD        *OD
-	Uri       url.URL
+	Uri       fasturl.URL
 	UriStr    string
 	Fails     int
 	LastError error
@@ -16,11 +17,12 @@ type Job struct {
 
 type OD struct {
 	Wait    sync.WaitGroup
-	BaseUri url.URL
-	lock    sync.Mutex
+	BaseUri fasturl.URL
 	Files   []File
 	WCtx    WorkerContext
-	Scanned sync.Map
+	Scanned redblackhash.Tree
+
+	lock    sync.Mutex
 }
 
 type File struct {
@@ -29,4 +31,15 @@ type File struct {
 	MTime time.Time `json:"mtime"`
 	Path  string    `json:"path"`
 	IsDir bool      `json:"-"`
+}
+
+func (o *OD) LoadOrStoreKey(k *redblackhash.Key) (exists bool) {
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
+	exists = o.Scanned.Get(k)
+	if exists { return true }
+
+	o.Scanned.Put(k)
+	return false
 }

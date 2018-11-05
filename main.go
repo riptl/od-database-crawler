@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"github.com/sirupsen/logrus"
+	"github.com/terorie/oddb-go/fasturl"
 	"github.com/urfave/cli"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -55,12 +55,13 @@ func cmdCrawler(clic *cli.Context) error {
 		if !strings.Contains(arg, "://") {
 			arg = "http://" + arg
 		}
-		u, err := url.Parse(arg)
+		var u fasturl.URL
+		err := u.Parse(arg)
 		if !strings.HasSuffix(u.Path, "/") {
 			u.Path += "/"
 		}
 		if err != nil { return err }
-		remotes[i] = &OD{ BaseUri: *u }
+		remotes[i] = &OD{ BaseUri: u }
 	}
 
 	c := context.Background()

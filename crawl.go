@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/terorie/oddb-go/ds/redblackhash"
+	"github.com/terorie/oddb-go/fasturl"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -18,12 +18,12 @@ import (
 
 var client fasthttp.Client
 
-func GetDir(j *Job, f *File) (links []url.URL, err error) {
+func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	f.IsDir = true
 	f.Name = path.Base(j.Uri.Path)
 
 	req := fasthttp.AcquireRequest()
-	req.SetRequestURI(j.Uri.String())
+	req.SetRequestURI(j.UriStr)
 
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
@@ -94,10 +94,9 @@ func GetDir(j *Job, f *File) (links []url.URL, err error) {
 					}
 				}
 
-				subref, err := url.Parse(href)
+				var link fasturl.URL
+				err = j.Uri.ParseRel(&link, href)
 				if err != nil { continue }
-
-				link := *j.Uri.ResolveReference(subref)
 
 				if link.Scheme != j.Uri.Scheme ||
 					link.Host != j.Uri.Host ||
@@ -116,7 +115,7 @@ func GetDir(j *Job, f *File) (links []url.URL, err error) {
 	return
 }
 
-func GetFile(u url.URL, f *File) (err error) {
+func GetFile(u fasturl.URL, f *File) (err error) {
 	f.IsDir = false
 	u.Path = path.Clean(u.Path)
 	f.Name = path.Base(u.Path)
@@ -145,7 +144,7 @@ func GetFile(u url.URL, f *File) (err error) {
 	return nil
 }
 
-func (f *File) HashDir(links []url.URL) string {
+func (f *File) HashDir(links []fasturl.URL) (o redblackhash.Key) {
 	h, _ := blake2b.New256(nil)
 	h.Write([]byte(f.Name))
 	for _, link := range links {
@@ -153,8 +152,8 @@ func (f *File) HashDir(links []url.URL) string {
 		h.Write([]byte(fileName))
 	}
 	sum := h.Sum(nil)
-	b64sum := base64.StdEncoding.EncodeToString(sum)
-	return b64sum
+	copy(o[:redblackhash.KeySize], sum)
+	return
 }
 
 func (f *File) ParseHeader(h []byte) {

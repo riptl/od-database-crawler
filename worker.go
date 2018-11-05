@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"math"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -67,12 +66,13 @@ func (w WorkerContext) step(job Job) {
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
-	if strings.HasSuffix(job.Uri.Path, "/") {
+	if len(job.Uri.Path) == 0 { return }
+	if job.Uri.Path[len(job.Uri.Path)-1] == '/' {
 		// Load directory
 		links, err := GetDir(job, f)
 		if err != nil {
 			logrus.WithError(err).
-				WithField("url", job.Uri.String()).
+				WithField("url", job.UriStr).
 				Error("Failed getting dir")
 			return nil, err
 		}
@@ -81,15 +81,15 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 		hash := f.HashDir(links)
 
 		// Skip symlinked dirs
-		if _, old := job.OD.Scanned.LoadOrStore(hash, true); old {
+		if job.OD.LoadOrStoreKey(&hash) {
 			return nil, ErrKnown
 		}
 
 		for _, link := range links {
 			// Skip already queued links
-			if _, old := job.OD.Scanned.LoadOrStore(link, true); old {
-				continue
-			}
+			//if _, old := job.OD.Scanned.LoadOrStore(link, true); old {
+			//	continue
+			//}
 			job.OD.Wait.Add(1)
 			newJobs = append(newJobs, Job{
 				OD:     job.OD,
@@ -98,16 +98,18 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 				Fails:  0,
 			})
 		}
-		logrus.WithFields(logrus.Fields{
-			"url": job.UriStr,
-			"files": len(links),
-		}).Debug("Listed")
+		if config.Verbose {
+			logrus.WithFields(logrus.Fields{
+				"url":   job.UriStr,
+				"files": len(links),
+			}).Debug("Listed")
+		}
 	} else {
 		// Load file
 		err := GetFile(job.Uri, f)
 		if err != nil {
 			logrus.WithError(err).
-				WithField("url", job.Uri.String()).
+				WithField("url", job.UriStr).
 				Error("Failed getting file")
 			return nil, err
 		}
