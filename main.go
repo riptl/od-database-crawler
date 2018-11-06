@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"github.com/terorie/oddb-go/fasturl"
+	"github.com/terorie/oddb-go/runes"
 	"github.com/urfave/cli"
 	"log"
 	"net/http"
@@ -50,15 +51,18 @@ func cmdCrawler(clic *cli.Context) error {
 
 	args := clic.Args()
 	remotes := make([]*OD, len(args))
-	for i, arg := range args {
+	for i, argStr := range args {
 		// https://github.com/golang/go/issues/19779
-		if !strings.Contains(arg, "://") {
-			arg = "http://" + arg
+		if !strings.Contains(argStr, "://") {
+			argStr = "http://" + argStr
 		}
+
+		arg := []rune(argStr)
+
 		var u fasturl.URL
 		err := u.Parse(arg)
-		if !strings.HasSuffix(u.Path, "/") {
-			u.Path += "/"
+		if !runes.HasSuffix(u.Path, []rune("/")) {
+			u.Path = append(u.Path, '/')
 		}
 		if err != nil { return err }
 		remotes[i] = &OD{ BaseUri: u }

@@ -109,7 +109,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 		err := GetFile(job.Uri, f)
 		if err != nil {
 			logrus.WithError(err).
-				WithField("url", job.UriStr).
+				WithField("url", job.Uri.String()).
 				Error("Failed getting file")
 			return nil, err
 		}

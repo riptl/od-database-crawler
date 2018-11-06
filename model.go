@@ -26,10 +26,10 @@ type OD struct {
 }
 
 type File struct {
-	Name  string    `json:"name"`
+	Name  []rune    `json:"name"`
 	Size  int64     `json:"size"`
 	MTime time.Time `json:"mtime"`
-	Path  string    `json:"path"`
+	Path  []rune    `json:"path"`
 	IsDir bool      `json:"-"`
 }
 

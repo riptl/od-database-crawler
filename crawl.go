@@ -6,6 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/terorie/oddb-go/ds/redblackhash"
 	"github.com/terorie/oddb-go/fasturl"
+	"github.com/terorie/oddb-go/runes"
+	"github.com/terorie/oddb-go/runespath"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/net/html"
@@ -20,7 +22,7 @@ var client fasthttp.Client
 
 func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	f.IsDir = true
-	f.Name = path.Base(j.Uri.Path)
+	f.Name = runespath.Base(j.Uri.Path)
 
 	req := fasthttp.AcquireRequest()
 	req.SetRequestURI(j.UriStr)
@@ -95,13 +97,13 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 				}
 
 				var link fasturl.URL
-				err = j.Uri.ParseRel(&link, href)
+				err = j.Uri.ParseRel(&link, []rune(href))
 				if err != nil { continue }
 
-				if link.Scheme != j.Uri.Scheme ||
-					link.Host != j.Uri.Host ||
-					link.Path == j.Uri.Path ||
-					!strings.HasPrefix(link.Path, j.Uri.Path) {
+				if !runes.Equals(link.Scheme, j.Uri.Scheme) ||
+					!runes.Equals(link.Host, j.Uri.Host) ||
+					 runes.Equals(link.Path, j.Uri.Path) ||
+					!runes.HasPrefix(link.Path, j.Uri.Path) {
 					continue
 				}
 
@@ -117,9 +119,9 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 
 func GetFile(u fasturl.URL, f *File) (err error) {
 	f.IsDir = false
-	u.Path = path.Clean(u.Path)
-	f.Name = path.Base(u.Path)
-	f.Path = strings.Trim(u.Path, "/")
+	u.Path = []rune(path.Clean(string(u.Path)))
+	f.Name = runespath.Base(u.Path)
+	f.Path = runes.TrimRune(u.Path, '/')
 
 	req := fasthttp.AcquireRequest()
 	req.Header.SetMethod("HEAD")
@@ -146,10 +148,10 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 
 func (f *File) HashDir(links []fasturl.URL) (o redblackhash.Key) {
 	h, _ := blake2b.New256(nil)
-	h.Write([]byte(f.Name))
+	h.Write([]byte(string(f.Name)))
 	for _, link := range links {
-		fileName := path.Base(link.Path)
-		h.Write([]byte(fileName))
+		fileName := runespath.Base(link.Path)
+		h.Write([]byte(string(fileName)))
 	}
 	sum := h.Sum(nil)
 	copy(o[:redblackhash.KeySize], sum)
