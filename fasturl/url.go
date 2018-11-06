@@ -15,7 +15,6 @@ package fasturl
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -191,15 +190,6 @@ func shouldEscape(c byte, mode encoding) bool {
 	return true
 }
 
-// QueryUnescape does the inverse transformation of QueryEscape,
-// converting each 3-byte encoded substring of the form "%AB" into the
-// hex-decoded byte 0xAB.
-// It returns an error if any % is not followed by two hexadecimal
-// digits.
-func QueryUnescape(s string) (string, error) {
-	return unescape(s, encodeQueryComponent)
-}
-
 // PathUnescape does the inverse transformation of PathEscape,
 // converting each 3-byte encoded substring of the form "%AB" into the
 // hex-decoded byte 0xAB. It returns an error if any % is not followed
@@ -289,12 +279,6 @@ func unescape(s string, mode encoding) (string, error) {
 		}
 	}
 	return string(t), nil
-}
-
-// QueryEscape escapes the string so it can be safely placed
-// inside a URL query.
-func QueryEscape(s string) string {
-	return escape(s, encodeQueryComponent)
 }
 
 // PathEscape escapes the string so it can be safely placed
@@ -736,120 +720,6 @@ func (u *URL) String() string {
 	return buf.String()
 }
 
-// Values maps a string key to a list of values.
-// It is typically used for query parameters and form values.
-// Unlike in the http.Header map, the keys in a Values map
-// are case-sensitive.
-type Values map[string][]string
-
-// Get gets the first value associated with the given key.
-// If there are no values associated with the key, Get returns
-// the empty string. To access multiple values, use the map
-// directly.
-func (v Values) Get(key string) string {
-	if v == nil {
-		return ""
-	}
-	vs := v[key]
-	if len(vs) == 0 {
-		return ""
-	}
-	return vs[0]
-}
-
-// Set sets the key to value. It replaces any existing
-// values.
-func (v Values) Set(key, value string) {
-	v[key] = []string{value}
-}
-
-// Add adds the value to key. It appends to any existing
-// values associated with key.
-func (v Values) Add(key, value string) {
-	v[key] = append(v[key], value)
-}
-
-// Del deletes the values associated with key.
-func (v Values) Del(key string) {
-	delete(v, key)
-}
-
-// ParseQuery parses the URL-encoded query string and returns
-// a map listing the values specified for each key.
-// ParseQuery always returns a non-nil map containing all the
-// valid query parameters found; err describes the first decoding error
-// encountered, if any.
-//
-// Query is expected to be a list of key=value settings separated by
-// ampersands or semicolons. A setting without an equals sign is
-// interpreted as a key set to an empty value.
-func ParseQuery(query string) (Values, error) {
-	m := make(Values)
-	err := parseQuery(m, query)
-	return m, err
-}
-
-func parseQuery(m Values, query string) (err error) {
-	for query != "" {
-		key := query
-		if i := strings.IndexAny(key, "&;"); i >= 0 {
-			key, query = key[:i], key[i+1:]
-		} else {
-			query = ""
-		}
-		if key == "" {
-			continue
-		}
-		value := ""
-		if i := strings.Index(key, "="); i >= 0 {
-			key, value = key[:i], key[i+1:]
-		}
-		key, err1 := QueryUnescape(key)
-		if err1 != nil {
-			if err == nil {
-				err = err1
-			}
-			continue
-		}
-		value, err1 = QueryUnescape(value)
-		if err1 != nil {
-			if err == nil {
-				err = err1
-			}
-			continue
-		}
-		m[key] = append(m[key], value)
-	}
-	return err
-}
-
-// Encode encodes the values into ``URL encoded'' form
-// ("bar=baz&foo=quux") sorted by key.
-func (v Values) Encode() string {
-	if v == nil {
-		return ""
-	}
-	var buf strings.Builder
-	keys := make([]string, 0, len(v))
-	for k := range v {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		vs := v[k]
-		keyEscaped := QueryEscape(k)
-		for _, v := range vs {
-			if buf.Len() > 0 {
-				buf.WriteByte('&')
-			}
-			buf.WriteString(keyEscaped)
-			buf.WriteByte('=')
-			buf.WriteString(QueryEscape(v))
-		}
-	}
-	return buf.String()
-}
-
 // resolvePath applies special path segments from refs and applies
 // them to base, per RFC 3986.
 func resolvePath(base, ref string) string {
@@ -937,14 +807,6 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	url.Host = u.Host
 	url.setPath(resolvePath(u.EscapedPath(), ref.EscapedPath()))
 	return
-}
-
-// Query parses RawQuery and returns the corresponding values.
-// It silently discards malformed value pairs.
-// To check errors use ParseQuery.
-func (u *URL) Query() Values {
-	v, _ := ParseQuery(u.RawQuery)
-	return v
 }
 
 // RequestURI returns the encoded path?query or opaque?query
