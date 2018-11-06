@@ -86,15 +86,17 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 		}
 
 		for _, link := range links {
+			uriStr := link.String()
 			// Skip already queued links
-			//if _, old := job.OD.Scanned.LoadOrStore(link, true); old {
-			//	continue
-			//}
+			linkHash := HashString(uriStr)
+			if job.OD.LoadOrStoreKey(&linkHash) {
+				continue
+			}
 			job.OD.Wait.Add(1)
 			newJobs = append(newJobs, Job{
 				OD:     job.OD,
 				Uri:    link,
-				UriStr: link.String(),
+				UriStr: uriStr,
 				Fails:  0,
 			})
 		}
