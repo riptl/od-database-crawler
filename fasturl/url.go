@@ -190,17 +190,6 @@ func shouldEscape(c byte, mode encoding) bool {
 	return true
 }
 
-// PathUnescape does the inverse transformation of PathEscape,
-// converting each 3-byte encoded substring of the form "%AB" into the
-// hex-decoded byte 0xAB. It returns an error if any % is not followed
-// by two hexadecimal digits.
-//
-// PathUnescape is identical to QueryUnescape except that it does not
-// unescape '+' to ' ' (space).
-func PathUnescape(s string) (string, error) {
-	return unescape(s, encodePathSegment)
-}
-
 // unescape unescapes a string; the mode specifies
 // which section of the URL string is being unescaped.
 func unescape(s string, mode encoding) (string, error) {
@@ -281,12 +270,6 @@ func unescape(s string, mode encoding) (string, error) {
 	return string(t), nil
 }
 
-// PathEscape escapes the string so it can be safely placed
-// inside a URL path segment.
-func PathEscape(s string) string {
-	return escape(s, encodePathSegment)
-}
-
 func escape(s string, mode encoding) string {
 	spaceCount, hexCount := 0, 0
 	for i := 0; i < len(s); i++ {
@@ -346,7 +329,6 @@ type URL struct {
 	Opaque     string    // encoded opaque data
 	Host       string    // host or host:port
 	Path       string    // path (relative paths may omit leading slash)
-	RawPath    string    // encoded path hint (see EscapedPath method)
 	ForceQuery bool      // append a query ('?') even if RawQuery is empty
 	RawQuery   string    // encoded query values, without '?'
 }
@@ -496,13 +478,7 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 			return err
 		}
 	}
-	// Set Path and, optionally, RawPath.
-	// RawPath is a hint of the encoding of Path. We don't want to set it if
-	// the default escaping of Path is equivalent, to help make sure that people
-	// don't rely on it in general.
-	if err := u.setPath(rest); err != nil {
-		return err
-	}
+	u.Path = rest
 	return nil
 }
 
@@ -572,76 +548,6 @@ func parseHost(host string) (string, error) {
 	return host, nil
 }
 
-// setPath sets the Path and RawPath fields of the URL based on the provided
-// escaped path p. It maintains the invariant that RawPath is only specified
-// when it differs from the default encoding of the path.
-// For example:
-// - setPath("/foo/bar")   will set Path="/foo/bar" and RawPath=""
-// - setPath("/foo%2fbar") will set Path="/foo/bar" and RawPath="/foo%2fbar"
-// setPath will return an error only if the provided path contains an invalid
-// escaping.
-func (u *URL) setPath(p string) error {
-	path, err := unescape(p, encodePath)
-	if err != nil {
-		return err
-	}
-	u.Path = path
-	if escp := escape(path, encodePath); p == escp {
-		// Default encoding is fine.
-		u.RawPath = ""
-	} else {
-		u.RawPath = p
-	}
-	return nil
-}
-
-// EscapedPath returns the escaped form of u.Path.
-// In general there are multiple possible escaped forms of any path.
-// EscapedPath returns u.RawPath when it is a valid escaping of u.Path.
-// Otherwise EscapedPath ignores u.RawPath and computes an escaped
-// form on its own.
-// The String and RequestURI methods use EscapedPath to construct
-// their results.
-// In general, code should call EscapedPath instead of
-// reading u.RawPath directly.
-func (u *URL) EscapedPath() string {
-	if u.RawPath != "" && validEncodedPath(u.RawPath) {
-		p, err := unescape(u.RawPath, encodePath)
-		if err == nil && p == u.Path {
-			return u.RawPath
-		}
-	}
-	if u.Path == "*" {
-		return "*" // don't escape (Issue 11202)
-	}
-	return escape(u.Path, encodePath)
-}
-
-// validEncodedPath reports whether s is a valid encoded path.
-// It must not contain any bytes that require escaping during path encoding.
-func validEncodedPath(s string) bool {
-	for i := 0; i < len(s); i++ {
-		// RFC 3986, Appendix A.
-		// pchar = unreserved / pct-encoded / sub-delims / ":" / "@".
-		// shouldEscape is not quite compliant with the RFC,
-		// so we check the sub-delims ourselves and let
-		// shouldEscape handle the others.
-		switch s[i] {
-		case '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@':
-			// ok
-		case '[', ']':
-			// ok - not specified in RFC 3986 but left alone by modern browsers
-		case '%':
-			// ok - percent encoded, will decode
-		default:
-			if shouldEscape(s[i], encodePath) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 // validOptionalPort reports whether port is either an empty string
 // or matches /^:\d*$/
 func validOptionalPort(port string) bool {
@@ -696,7 +602,7 @@ func (u *URL) String() string {
 				buf.WriteString(escape(h, encodeHost))
 			}
 		}
-		path := u.EscapedPath()
+		path := u.Path
 		if path != "" && path[0] != '/' && u.Host != "" {
 			buf.WriteByte('/')
 		}
@@ -792,7 +698,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 		// The "absoluteURI" or "net_path" cases.
 		// We can ignore the error from setPath since we know we provided a
 		// validly-escaped path.
-		url.setPath(resolvePath(ref.EscapedPath(), ""))
+		url.Path = resolvePath(ref.Path, "")
 		return
 	}
 	if ref.Opaque != "" {
@@ -805,7 +711,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 	}
 	// The "abs_path" or "rel_path" cases.
 	url.Host = u.Host
-	url.setPath(resolvePath(u.EscapedPath(), ref.EscapedPath()))
+	url.Path = resolvePath(u.Path, ref.Path)
 	return
 }
 
@@ -814,7 +720,7 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 func (u *URL) RequestURI() string {
 	result := u.Opaque
 	if result == "" {
-		result = u.EscapedPath()
+		result = u.Path
 		if result == "" {
 			result = "/"
 		}
