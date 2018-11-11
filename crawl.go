@@ -155,14 +155,6 @@ func (f *File) HashDir(links []fasturl.URL) (o redblackhash.Key) {
 	return
 }
 
-func HashString(s string) (o redblackhash.Key) {
-	h, _ := blake2b.New256(nil)
-	h.Write([]byte(s))
-	sum := h.Sum(nil)
-	copy(o[:redblackhash.KeySize], sum)
-	return
-}
-
 func (f *File) applyContentLength(v string) {
 	if v == "" { return }
 	size, err := strconv.ParseInt(v, 10, 64)

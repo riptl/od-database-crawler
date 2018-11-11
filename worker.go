@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"math"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -85,13 +87,22 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			return nil, ErrKnown
 		}
 
+		// Sort by path
+		sort.Slice(links, func(i, j int) bool {
+			return strings.Compare(links[i].Path, links[j].Path) < 0
+		})
+
+		var newJobCount int
+		var lastLink string
 		for _, link := range links {
 			uriStr := link.String()
-			// Skip already queued links
-			linkHash := HashString(uriStr)
-			if job.OD.LoadOrStoreKey(&linkHash) {
+
+			// Ignore dupes
+			if uriStr == lastLink {
 				continue
 			}
+			lastLink = uriStr
+
 			job.OD.Wait.Add(1)
 			newJobs = append(newJobs, Job{
 				OD:     job.OD,
@@ -99,11 +110,13 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 				UriStr: uriStr,
 				Fails:  0,
 			})
+
+			newJobCount++
 		}
 		if config.Verbose {
 			logrus.WithFields(logrus.Fields{
 				"url":   job.UriStr,
-				"files": len(links),
+				"files": newJobCount,
 			}).Debug("Listed")
 		}
 	} else {
