@@ -137,9 +137,8 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 	err = checkStatusCode(res.StatusCode())
 	if err != nil { return }
 
-	// TODO Inefficient af
-	header := res.Header.Header()
-	f.ParseHeader(header)
+	f.applyContentLength(string(res.Header.Peek("content-length")))
+	f.applyLastModified(string(res.Header.Peek("last-modified")))
 
 	return nil
 }
@@ -164,64 +163,24 @@ func HashString(s string) (o redblackhash.Key) {
 	return
 }
 
-func (f *File) ParseHeader(h []byte) {
-	var k1, k2 int
-	var v1, v2 int
-
-	// Simple finite state machine
-	state := 0
-	for i, b := range h {
-		switch state {
-		case 0:
-			if b == byte(':') {
-				state = 1
-				k2 = i
-			}
-
-		case 1:
-			state = 2
-
-		case 2:
-			state = 3
-			v1 = i
-
-		case 3:
-			if b == byte('\r') {
-				state = 4
-			}
-
-		case 4:
-			state = 0
-			v2 = i - 1
-
-			key := string(h[k1:k2])
-			val := string(h[v1:v2])
-			k1 = i
-
-			f.applyHeader(key, val)
-		}
-	}
-
+func (f *File) applyContentLength(v string) {
+	if v == "" { return }
+	size, err := strconv.ParseInt(v, 10, 64)
+	if err != nil { return }
+	if size < 0 { return }
+	f.Size = size
 }
 
-func (f *File) applyHeader(k, v string) {
-	switch k {
-	case "content-length":
-		size, err := strconv.ParseInt(v, 10, 64)
-		if err != nil { break }
-		if size < 0 { break }
-		f.Size = size
-
-	case "last-modified":
-		var err error
-		f.MTime, err = time.Parse(time.RFC1123, v)
-		if err == nil { break }
-		f.MTime, err = time.Parse(time.RFC850, v)
-		if err == nil { break }
-		// TODO Parse asctime
-		f.MTime, err = time.Parse("2006-01-02", v[:10])
-		if err == nil { break }
-	}
+func (f *File) applyLastModified(v string) {
+	if v == "" { return }
+	var err error
+	f.MTime, err = time.Parse(time.RFC1123, v)
+	if err == nil { return }
+	f.MTime, err = time.Parse(time.RFC850, v)
+	if err == nil { return }
+	// TODO Parse asctime
+	f.MTime, err = time.Parse("2006-01-02", v[:10])
+	if err == nil { return }
 }
 
 func checkStatusCode(status int) error {
