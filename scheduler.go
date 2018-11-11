@@ -35,7 +35,6 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 				UriStr: remote.BaseUri.String(),
 				Fails:  0,
 			})
-			globalWait.Done()
 
 			// Upload result when ready
 			go remote.Watch()
@@ -51,6 +50,8 @@ func (r *OD) Watch() {
 
 	logrus.WithField("url", r.BaseUri.String()).
 		Info("Crawler finished")
+
+	globalWait.Done()
 }
 
 func makeJobBuffer(c context.Context) (chan<- Job, <-chan Job) {

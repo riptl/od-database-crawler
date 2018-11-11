@@ -134,7 +134,6 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 
 func (w WorkerContext) queueJob(job Job) {
 	job.OD.Wait.Add(1)
-	globalWait.Add(1)
 
 	if w.numRateLimits > 0 {
 		if time.Since(w.lastRateLimit) > 5 * time.Second {
@@ -151,5 +150,4 @@ func (w WorkerContext) queueJob(job Job) {
 
 func (w WorkerContext) finishJob(job *Job) {
 	job.OD.Wait.Done()
-	globalWait.Done()
 }
