@@ -16,7 +16,7 @@ import (
 var app = cli.App {
 	Name:         "oddb-go",
 	Usage:        "OD-Database Go crawler",
-	Version:      "0.1",
+	Version:      "0.2",
 	BashComplete: cli.DefaultAppComplete,
 	Writer:       os.Stdout,
 	Compiled:     buildDate,
@@ -89,6 +89,6 @@ func cmdCrawler(clic *cli.Context) error {
 }
 
 var buildDate = time.Date(
-	2018, 10, 28,
-	17, 10, 0, 0,
+	2018, 11, 15,
+	23, 24, 0, 0,
 	time.UTC)
