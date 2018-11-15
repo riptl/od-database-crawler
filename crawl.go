@@ -39,7 +39,6 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	doc := html.NewTokenizer(bytes.NewReader(body))
 
 	var linkHref string
-	var linkTexts []string
 	for {
 		tokenType := doc.Next()
 		token := doc.Token()
@@ -58,20 +57,13 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 				}
 			}
 
-		case html.TextToken:
-			if linkHref != "" {
-				linkTexts = append(linkTexts, token.Data)
-			}
-
 		case html.EndTagToken:
 			if linkHref != "" && token.DataAtom == atom.A {
 				// Copy params
 				href := linkHref
-				linkText := strings.Join(linkTexts, " ")
 
 				// Reset params
 				linkHref = ""
-				linkTexts = nil
 
 				// TODO Optimized decision tree
 				if strings.LastIndexByte(href, '?') != -1 {
@@ -83,10 +75,8 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 						goto nextToken
 					}
 				}
-				for _, entry := range fileNameBlackList {
-					if strings.Contains(linkText, entry) {
-						goto nextToken
-					}
+				if strings.Contains(href, "../") {
+					goto nextToken
 				}
 
 				var link fasturl.URL
@@ -194,10 +184,3 @@ var urlBlackList = [...]string {
 	"..",
 	"/",
 }
-
-var fileNameBlackList = [...]string {
-	"Parent Directory",
-	" Parent Directory",
-	"../",
-}
-
