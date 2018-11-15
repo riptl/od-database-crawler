@@ -8,7 +8,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 	"path"
 	"strconv"
 	"strings"
@@ -41,40 +40,43 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	var linkHref string
 	for {
 		tokenType := doc.Next()
-		token := doc.Token()
 		if tokenType == html.ErrorToken {
 			break
 		}
 
 		switch tokenType {
 		case html.StartTagToken:
-			if token.DataAtom == atom.A {
-				for _, attr := range token.Attr {
-					if attr.Key == "href" {
-						linkHref = attr.Val
+			name, hasAttr := doc.TagName()
+			if len(name) == 1 && name[0] == 'a' {
+				for hasAttr {
+					var ks, vs []byte
+					ks, vs, hasAttr = doc.TagAttr()
+					if bytes.Equal(ks, []byte("href")) {
+						// TODO Check escape
+						linkHref = string(vs)
 						break
 					}
 				}
 			}
 
 		case html.EndTagToken:
-			if linkHref != "" && token.DataAtom == atom.A {
+			name, _ := doc.TagName()
+			if len(name) == 1 && name[0] == 'a' {
 				// Copy params
 				href := linkHref
 
 				// Reset params
 				linkHref = ""
 
-				// TODO Optimized decision tree
 				if strings.LastIndexByte(href, '?') != -1 {
 					goto nextToken
 				}
 
-				for _, entry := range urlBlackList {
-					if href == entry {
-						goto nextToken
-					}
+				switch href {
+				case "", " ", ".", "..", "/":
+					goto nextToken
 				}
+
 				if strings.Contains(href, "../") {
 					goto nextToken
 				}
@@ -175,12 +177,4 @@ func checkStatusCode(status int) error {
 	default:
 		return fmt.Errorf("got HTTP status %d", status)
 	}
-}
-
-var urlBlackList = [...]string {
-	"",
-	" ",
-	".",
-	"..",
-	"/",
 }
