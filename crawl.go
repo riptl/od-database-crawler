@@ -74,13 +74,12 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 				linkTexts = nil
 
 				// TODO Optimized decision tree
+				if strings.LastIndexByte(href, '?') != -1 {
+					goto nextToken
+				}
+
 				for _, entry := range urlBlackList {
 					if href == entry {
-						goto nextToken
-					}
-				}
-				for _, entry := range urlPartBlackList {
-					if strings.Contains(href, entry) {
 						goto nextToken
 					}
 				}
@@ -194,29 +193,6 @@ var urlBlackList = [...]string {
 	".",
 	"..",
 	"/",
-}
-
-var urlPartBlackList = [...]string {
-	"?C=N&O=D",
-	"?C=M&O=A",
-	"?C=S&O=A",
-	"?C=D&O=A",
-	"?C=N;O=D",
-	"?C=M;O=A",
-	"?C=M&O=D",
-	"?C=S;O=A",
-	"?C=S&O=D",
-	"?C=D;O=A",
-	"?MA",
-	"?SA",
-	"?DA",
-	"?ND",
-	"?C=N&O=A",
-	"?C=N&O=A",
-	"?M=A",
-	"?N=D",
-	"?S=A",
-	"?D=A",
 }
 
 var fileNameBlackList = [...]string {
