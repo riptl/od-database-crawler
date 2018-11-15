@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/sirupsen/logrus"
+	"os"
+	"path"
 	"sync/atomic"
 )
 
@@ -12,37 +16,36 @@ var totalBuffered int64
 func Schedule(c context.Context, remotes <-chan *OD) {
 	go Stats(c)
 
-	for {
-		select {
-		case <-c.Done():
-			return
+	for remote := range remotes {
+		logrus.WithField("url", remote.BaseUri.String()).
+			Info("Starting crawler")
 
-		case remote := <-remotes:
-			logrus.WithField("url", remote.BaseUri.String()).
-				Info("Starting crawler")
+		// Collect results
+		results := make(chan File)
 
-			// Spawn workers
-			remote.WCtx.in, remote.WCtx.out = makeJobBuffer(c)
-			for i := 0; i < config.Workers; i++ {
-				go remote.WCtx.Worker()
-			}
-
-			// Enqueue initial job
-			atomic.AddInt32(&activeTasks, 1)
-			remote.WCtx.queueJob(Job{
-				OD:     remote,
-				Uri:    remote.BaseUri,
-				UriStr: remote.BaseUri.String(),
-				Fails:  0,
-			})
-
-			// Upload result when ready
-			go remote.Watch()
+		// Spawn workers
+		remote.WCtx.in, remote.WCtx.out = makeJobBuffer(c)
+		for i := 0; i < config.Workers; i++ {
+			go remote.WCtx.Worker(results)
 		}
+
+		// Enqueue initial job
+		atomic.AddInt32(&activeTasks, 1)
+		remote.WCtx.queueJob(Job{
+			OD:     remote,
+			Uri:    remote.BaseUri,
+			UriStr: remote.BaseUri.String(),
+			Fails:  0,
+		})
+
+		// Upload result when ready
+		go remote.Watch(results)
 	}
 }
 
-func (r *OD) Watch() {
+func (r *OD) Watch(results chan File) {
+	go r.Task.Collect(results)
+
 	// Wait for all jobs on remote to finish
 	r.Wait.Wait()
 	close(r.WCtx.in)
@@ -52,6 +55,40 @@ func (r *OD) Watch() {
 		Info("Crawler finished")
 
 	globalWait.Done()
+
+	close(results)
+}
+
+func (t *Task) Collect(results chan File) {
+	err := t.collect(results)
+	if err != nil {
+		logrus.WithError(err).
+			Error("Failed saving crawl results")
+	}
+}
+
+func (t *Task) collect(results chan File) error {
+	err := os.MkdirAll("crawled", 0755)
+	if err != nil { return err }
+
+	f, err := os.OpenFile(
+		path.Join("crawled", fmt.Sprintf("%d.json", t.WebsiteId)),
+		os.O_CREATE | os.O_WRONLY | os.O_TRUNC,
+		0755,
+	)
+	if err != nil { return err }
+	defer f.Close()
+
+	for result := range results {
+		resJson, err := json.Marshal(result)
+		if err != nil { panic(err) }
+		_, err = f.Write(resJson)
+		if err != nil { return err }
+		_, err = f.Write([]byte{'\n'})
+		if err != nil { return err }
+	}
+
+	return nil
 }
 
 func makeJobBuffer(c context.Context) (chan<- Job, <-chan Job) {

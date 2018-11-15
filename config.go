@@ -13,6 +13,7 @@ var config struct {
 	Token      string
 	Retries    int
 	Workers    int
+	Timeout    time.Duration
 	Tasks      int32
 	CrawlStats time.Duration
 	AllocStats time.Duration
@@ -25,6 +26,7 @@ const (
 	ConfTasks      = "crawl.tasks"
 	ConfRetries    = "crawl.retries"
 	ConfWorkers    = "crawl.connections"
+	ConfTimeout    = "crawl.timeout"
 	ConfCrawlStats = "output.crawl_stats"
 	ConfAllocStats = "output.resource_stats"
 	ConfVerbose    = "output.verbose"
@@ -34,6 +36,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfRetries, 5)
 	viper.SetDefault(ConfWorkers, 2)
 	viper.SetDefault(ConfTasks, 3)
+	viper.SetDefault(ConfTimeout, 10 * time.Second)
 	viper.SetDefault(ConfCrawlStats, 3 * time.Second)
 	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
@@ -72,6 +75,8 @@ func readConfig() {
 	if config.Tasks <= 0 {
 		configOOB(ConfTasks, int(config.Tasks))
 	}
+
+	config.Timeout = viper.GetDuration(ConfTimeout)
 
 	config.CrawlStats = viper.GetDuration(ConfCrawlStats)
 

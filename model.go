@@ -16,9 +16,9 @@ type Job struct {
 }
 
 type OD struct {
+	Task    *Task
 	Wait    sync.WaitGroup
 	BaseUri fasturl.URL
-	Files   []File
 	WCtx    WorkerContext
 	Scanned redblackhash.Tree
 

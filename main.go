@@ -61,7 +61,13 @@ func cmdCrawler(clic *cli.Context) error {
 			u.Path += "/"
 		}
 		if err != nil { return err }
-		remotes[i] = &OD{ BaseUri: u }
+		remotes[i] = &OD {
+			Task: &Task{
+				WebsiteId: 0,
+				Url: u.String(),
+			},
+			BaseUri: u,
+		}
 	}
 
 	c := context.Background()

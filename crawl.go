@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/terorie/oddb-go/ds/redblackhash"
 	"github.com/terorie/oddb-go/fasturl"
 	"github.com/valyala/fasthttp"
@@ -28,13 +27,10 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.Do(req, res)
+	err = client.DoTimeout(req, res, config.Timeout)
 	fasthttp.ReleaseRequest(req)
 
-	if err != nil {
-		logrus.Error(err)
-		return
-	}
+	if err != nil { return }
 
 	err = checkStatusCode(res.StatusCode())
 	if err != nil { return }
@@ -129,7 +125,7 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 	res.SkipBody = true
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.Do(req, res)
+	err = client.DoTimeout(req, res, config.Timeout)
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil { return }

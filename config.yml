@@ -24,3 +24,5 @@ crawl:
   # How often to retry getting data
   # from the site before giving up
   retries: 5
+  # Time before discarding a network request
+  timeout: 10s

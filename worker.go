@@ -19,13 +19,13 @@ type WorkerContext struct {
 	numRateLimits int
 }
 
-func (w WorkerContext) Worker() {
+func (w WorkerContext) Worker(results chan<- File) {
 	for job := range w.out {
-		w.step(job)
+		w.step(results, job)
 	}
 }
 
-func (w WorkerContext) step(job Job) {
+func (w WorkerContext) step(results chan<- File, job Job) {
 	defer w.finishJob(&job)
 
 	var f File
@@ -64,7 +64,9 @@ func (w WorkerContext) step(job Job) {
 		w.queueJob(job)
 	}
 
-	job.OD.Files = append(job.OD.Files, f)
+	if !f.IsDir {
+		results <- f
+	}
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
