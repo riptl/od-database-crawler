@@ -29,10 +29,14 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	err = client.DoTimeout(req, res, config.Timeout)
 	fasthttp.ReleaseRequest(req)
 
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	err = checkStatusCode(res.StatusCode())
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	body := res.Body()
 	doc := html.NewTokenizer(bytes.NewReader(body))
@@ -83,7 +87,9 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 
 				var link fasturl.URL
 				err = j.Uri.ParseRel(&link, href)
-				if err != nil { continue }
+				if err != nil {
+					continue
+				}
 
 				if link.Scheme != j.Uri.Scheme ||
 					link.Host != j.Uri.Host ||
@@ -96,7 +102,7 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 			}
 		}
 
-		nextToken:
+	nextToken:
 	}
 
 	return
@@ -106,7 +112,7 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 	f.IsDir = false
 	u.Path = path.Clean(u.Path)
 	f.Name = path.Base(u.Path)
-	f.Path = strings.Trim(u.Path, "/")
+	f.Path = strings.Trim(path.Dir(u.Path), "/")
 
 	req := fasthttp.AcquireRequest()
 	req.Header.SetMethod("HEAD")
@@ -119,10 +125,14 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 	err = client.DoTimeout(req, res, config.Timeout)
 	fasthttp.ReleaseRequest(req)
 
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	err = checkStatusCode(res.StatusCode())
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 
 	f.applyContentLength(string(res.Header.Peek("content-length")))
 	f.applyLastModified(string(res.Header.Peek("last-modified")))
@@ -143,23 +153,37 @@ func (f *File) HashDir(links []fasturl.URL) (o redblackhash.Key) {
 }
 
 func (f *File) applyContentLength(v string) {
-	if v == "" { return }
+	if v == "" {
+		return
+	}
 	size, err := strconv.ParseInt(v, 10, 64)
-	if err != nil { return }
-	if size < 0 { return }
+	if err != nil {
+		return
+	}
+	if size < 0 {
+		return
+	}
 	f.Size = size
 }
 
 func (f *File) applyLastModified(v string) {
-	if v == "" { return }
+	if v == "" {
+		return
+	}
 	var err error
 	f.MTime, err = time.Parse(time.RFC1123, v)
-	if err == nil { return }
+	if err == nil {
+		return
+	}
 	f.MTime, err = time.Parse(time.RFC850, v)
-	if err == nil { return }
+	if err == nil {
+		return
+	}
 	// TODO Parse asctime
 	f.MTime, err = time.Parse("2006-01-02", v[:10])
-	if err == nil { return }
+	if err == nil {
+		return
+	}
 }
 
 func checkStatusCode(status int) error {
