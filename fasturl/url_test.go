@@ -287,8 +287,8 @@ var urltests = []URLTest{
 
 // more useful string for debugging than fmt's struct printer
 func ufmt(u *URL) string {
-	return fmt.Sprintf("opaque=%q, scheme=%q, host=%q, path=%q",
-		u.Opaque, Schemes[u.Scheme], u.Host, u.Path)
+	return fmt.Sprintf("scheme=%q, host=%q, path=%q",
+		Schemes[u.Scheme], u.Host, u.Path)
 }
 
 func BenchmarkString(b *testing.B) {
@@ -644,31 +644,6 @@ var requritests = []RequestURITest{
 			Path:   "/a b",
 		},
 		"/a%20b",
-	},
-	// golang.org/issue/4860 variant 1
-	{
-		&URL{
-			Scheme: SchemeHTTP,
-			Host:   "example.com",
-			Opaque: "/%2F/%2F/",
-		},
-		"/%2F/%2F/",
-	},
-	// golang.org/issue/4860 variant 2
-	{
-		&URL{
-			Scheme: SchemeHTTP,
-			Host:   "example.com",
-			Opaque: "//other.example.com/%2F/%2F/",
-		},
-		"http://other.example.com/%2F/%2F/",
-	},
-	{
-		&URL{
-			Scheme: SchemeHTTP,
-			Opaque: "opaque",
-		},
-		"opaque",
 	},
 	{
 		&URL{
