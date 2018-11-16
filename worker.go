@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"github.com/sirupsen/logrus"
 	"math"
 	"sort"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -70,8 +70,9 @@ func (w WorkerContext) step(results chan<- File, job Job) {
 }
 
 func DoJob(job *Job, f *File) (newJobs []Job, err error) {
-	if len(job.Uri.Path) == 0 { return }
-	if job.Uri.Path[len(job.Uri.Path)-1] == '/' {
+	uriPath := job.Uri.Path()
+	if len(uriPath) == 0 { return }
+	if uriPath[len(uriPath)-1] == '/' {
 		// Load directory
 		links, err := GetDir(job, f)
 		if err != nil {
@@ -91,7 +92,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 
 		// Sort by path
 		sort.Slice(links, func(i, j int) bool {
-			return strings.Compare(links[i].Path, links[j].Path) < 0
+			return bytes.Compare(links[i].Path(), links[j].Path()) < 0
 		})
 
 		var newJobCount int

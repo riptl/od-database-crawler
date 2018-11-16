@@ -2,14 +2,14 @@ package main
 
 import (
 	"github.com/terorie/oddb-go/ds/redblackhash"
-	"github.com/terorie/oddb-go/fasturl"
+	"github.com/valyala/fasthttp"
 	"sync"
 	"time"
 )
 
 type Job struct {
 	OD        *OD
-	Uri       fasturl.URL
+	Uri       fasthttp.URI
 	UriStr    string
 	Fails     int
 	LastError error
@@ -18,7 +18,7 @@ type Job struct {
 type OD struct {
 	Task    *Task
 	Wait    sync.WaitGroup
-	BaseUri fasturl.URL
+	BaseUri fasthttp.URI
 	WCtx    WorkerContext
 	Scanned redblackhash.Tree
 

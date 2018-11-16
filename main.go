@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"github.com/sirupsen/logrus"
-	"github.com/terorie/oddb-go/fasturl"
 	"github.com/urfave/cli"
+	"github.com/valyala/fasthttp"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -55,12 +55,12 @@ func cmdCrawler(clic *cli.Context) error {
 		if !strings.Contains(arg, "://") {
 			arg = "http://" + arg
 		}
-		var u fasturl.URL
-		err := u.Parse(arg)
-		if !strings.HasSuffix(u.Path, "/") {
-			u.Path += "/"
+		var u fasthttp.URI
+		u.Parse(nil, []byte(arg))
+		uPath := string(u.Path())
+		if !strings.HasSuffix(uPath, "/") {
+			u.SetPath(uPath + "/")
 		}
-		if err != nil { return err }
 		remotes[i] = &OD {
 			Task: &Task{
 				WebsiteId: 0,
