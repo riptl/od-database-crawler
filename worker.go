@@ -105,7 +105,6 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			}
 			lastLink = uriStr
 
-			job.OD.Wait.Add(1)
 			newJobs = append(newJobs, Job{
 				OD:     job.OD,
 				Uri:    link,
@@ -143,11 +142,10 @@ func (w WorkerContext) queueJob(job Job) {
 		} else {
 			time.Sleep(time.Duration(math.Sqrt(float64(50 * w.numRateLimits))) *
 				100 * time.Millisecond)
-			w.in <- job
 		}
-	} else {
-		w.in <- job
 	}
+
+	w.in <- job
 }
 
 func (w WorkerContext) finishJob(job *Job) {

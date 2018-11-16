@@ -9,6 +9,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -21,6 +22,14 @@ var app = cli.App {
 	Writer:       os.Stdout,
 	Compiled:     buildDate,
 	Action:       cmdBase,
+	Commands:     []cli.Command{
+		{
+			Name:      "crawl",
+			Usage:     "Crawl a list of URLs",
+			ArgsUsage: "<site>",
+			Action:    cmdCrawler,
+		},
+	},
 }
 
 func init() {
@@ -74,11 +83,52 @@ func cmdBase(clic *cli.Context) error {
 				time.Sleep(30 * time.Second)
 				continue
 			}
+			globalWait.Add(1)
 			inRemotes <- &OD {
 				Task: t,
 				BaseUri: baseUri,
 			}
 		}
+	}
+
+	return nil
+}
+
+func cmdCrawler(clic *cli.Context) error {
+	readConfig()
+
+	if clic.NArg() != 1 {
+		cli.ShowCommandHelpAndExit(clic, "crawl", 1)
+	}
+
+	arg := clic.Args()[0]
+	// https://github.com/golang/go/issues/19779
+	if !strings.Contains(arg, "://") {
+		arg = "http://" + arg
+	}
+	var u fasturl.URL
+	err := u.Parse(arg)
+	if !strings.HasSuffix(u.Path, "/") {
+		u.Path += "/"
+	}
+	if err != nil { return err }
+
+	// TODO Graceful shutdown
+	forceCtx := context.Background()
+
+	inRemotes := make(chan *OD)
+	go Schedule(forceCtx, inRemotes)
+
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	globalWait.Add(1)
+	inRemotes <- &OD {
+		Task: &Task{
+			WebsiteId: 0,
+			Url: u.String(),
+		},
+		BaseUri: u,
 	}
 
 	// Wait for all jobs to finish

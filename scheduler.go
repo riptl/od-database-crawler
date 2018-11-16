@@ -42,6 +42,7 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		// Upload result when ready
 		go remote.Watch(results)
 
+		// Sleep if max number of tasks are active
 		for atomic.LoadInt32(&activeTasks) > config.Tasks {
 			select {
 			case <-c.Done():
