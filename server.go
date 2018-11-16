@@ -22,22 +22,19 @@ const (
 var serverClient = http.DefaultClient
 
 func FetchTask() (t *Task, err error) {
-	escToken, _ := json.Marshal(config.Token)
-	payload := `{"token":` + string(escToken) + `}`
-
-	req, err := http.NewRequest(
-		http.MethodPost,
+	res, err := serverClient.PostForm(
 		config.ServerUrl + "/task/get",
-		strings.NewReader(payload))
-	if err != nil { return }
-
-	res, err := serverClient.Do(req)
+		url.Values{ "token": {config.Token} })
 	if err != nil { return }
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		err = fmt.Errorf("http %s", res.Status)
-		return
+	switch res.StatusCode {
+	case 200:
+		break
+	case 500:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("http %s", res.Status)
 	}
 
 	t = new(Task)

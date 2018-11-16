@@ -39,6 +39,10 @@ func Stats(c context.Context) {
 			perSecond = math.Round(perSecond)
 			perSecond /= 2
 
+			if perSecond <= 0 {
+				continue
+			}
+
 			logrus.WithFields(logrus.Fields{
 				"per_second": perSecond,
 				"done":    atomic.LoadUint64(&totalDone),

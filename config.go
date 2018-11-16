@@ -5,6 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -52,14 +53,15 @@ func readConfig() {
 	}
 
 	config.ServerUrl = viper.GetString(ConfServerUrl)
-	//if config.ServerUrl == "" {
-	//	configMissing(ConfServerUrl)
-	//}
+	if config.ServerUrl == "" {
+		configMissing(ConfServerUrl)
+	}
+	config.ServerUrl = strings.TrimRight(config.ServerUrl, "/")
 
 	config.Token = viper.GetString(ConfToken)
-	//if config.Token == "" {
-	//	configMissing(ConfToken)
-	//}
+	if config.Token == "" {
+		configMissing(ConfToken)
+	}
 
 	config.Retries = viper.GetInt(ConfRetries)
 	if config.Retries < 0 {

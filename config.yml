@@ -1,7 +1,7 @@
 # OD-Database server settings
 server:
   # Connection URL
-  url: localhost:6969
+  url: http://od-db.mine.terorie.com/api
   # Server auth token
   token:
 
@@ -10,7 +10,7 @@ output:
   # Crawl statistics
   crawl_stats: 1s
   # CPU/RAM/Job queue stats
-  resource_stats: 1s
+  resource_stats: 10s
   # More output? (Every listed dir)
   verbose: false
 
@@ -18,9 +18,9 @@ output:
 crawl:
   # Number of sites that can be
   # processed at once
-  tasks: 3
+  tasks: 300
   # Number of connections per site
-  connections: 2
+  connections: 20
   # How often to retry getting data
   # from the site before giving up
   retries: 5
