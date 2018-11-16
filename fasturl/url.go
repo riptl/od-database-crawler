@@ -635,6 +635,8 @@ func resolvePath(base, ref string) string {
 	}
 	if full == "" {
 		return ""
+	} else if full == "/" {
+		return "/"
 	}
 
 	dst := make([]rune, len(full))
@@ -648,7 +650,34 @@ func resolvePath(base, ref string) string {
 	var stack []int
 	stack = append(stack, 0)
 	for i, c := range rs {
-		if c == '/' {
+		if i == len(rs) - 1 {
+			closingSlash := false
+			part := rs[start:]
+			if len(part) == 0 {
+				dst = append(dst, '/')
+			} else if part[len(part)-1] == '/' {
+				part = part[:len(part)-1]
+				closingSlash = true
+			}
+			switch {
+			case isRunesDot(part):
+				dst = append(dst, '/')
+			case isRunesDoubleDot(part):
+				// Cut to the last slash
+				start = i+1
+				dst = dst[:stack[len(stack)-1]]
+				if len(stack) != 1 {
+					stack = stack[:len(stack)-1]
+				}
+				dst = append(dst, '/')
+			default:
+				dst = append(dst, '/')
+				dst = append(dst, part...)
+			}
+			if closingSlash && len(dst) != 0 && dst[len(dst)-1] != '/' {
+				dst = append(dst, '/')
+			}
+		} else if c == '/' {
 			part := rs[start:i]
 			switch {
 			case isRunesDot(part):
@@ -663,23 +692,6 @@ func resolvePath(base, ref string) string {
 			default:
 				start = i+1
 				stack = append(stack, len(dst))
-				dst = append(dst, '/')
-				dst = append(dst, part...)
-			}
-		} else if i == len(rs) - 1 {
-			part := rs[start:]
-			switch {
-			case isRunesDot(part):
-				dst = append(dst, '/')
-			case isRunesDoubleDot(part):
-				// Cut to the last slash
-				start = i+1
-				dst = dst[:stack[len(stack)-1]]
-				if len(stack) != 1 {
-					stack = stack[:len(stack)-1]
-				}
-				dst = append(dst, '/')
-			default:
 				dst = append(dst, '/')
 				dst = append(dst, part...)
 			}
