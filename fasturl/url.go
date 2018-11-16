@@ -329,8 +329,6 @@ type URL struct {
 	Opaque     string    // encoded opaque data
 	Host       string    // host or host:port
 	Path       string    // path (relative paths may omit leading slash)
-	ForceQuery bool      // append a query ('?') even if RawQuery is empty
-	RawQuery   string    // encoded query values, without '?'
 }
 
 // Maybe rawurl is of the form scheme:path.
@@ -440,10 +438,9 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	}
 
 	if strings.HasSuffix(rest, "?") && strings.Count(rest, "?") == 1 {
-		u.ForceQuery = true
 		rest = rest[:len(rest)-1]
 	} else {
-		rest, u.RawQuery = split(rest, "?", true)
+		rest, _ = split(rest, "?", true)
 	}
 
 	if !strings.HasPrefix(rest, "/") {
@@ -619,10 +616,6 @@ func (u *URL) String() string {
 		}
 		buf.WriteString(path)
 	}
-	if u.ForceQuery || u.RawQuery != "" {
-		buf.WriteByte('?')
-		buf.WriteString(u.RawQuery)
-	}
 	return buf.String()
 }
 
@@ -706,73 +699,10 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 		url.Path = ""
 		return
 	}
-	if ref.Path == "" && ref.RawQuery == "" {
-		url.RawQuery = u.RawQuery
-	}
 	// The "abs_path" or "rel_path" cases.
 	url.Host = u.Host
 	url.Path = resolvePath(u.Path, ref.Path)
 	return
-}
-
-// RequestURI returns the encoded path?query or opaque?query
-// string that would be used in an HTTP request for u.
-func (u *URL) RequestURI() string {
-	result := u.Opaque
-	if result == "" {
-		result = u.Path
-		if result == "" {
-			result = "/"
-		}
-	} else {
-		if strings.HasPrefix(result, "//") {
-			result = Schemes[u.Scheme] + ":" + result
-		}
-	}
-	if u.ForceQuery || u.RawQuery != "" {
-		result += "?" + u.RawQuery
-	}
-	return result
-}
-
-// Hostname returns u.Host, without any port number.
-//
-// If Host is an IPv6 literal with a port number, Hostname returns the
-// IPv6 literal without the square brackets. IPv6 literals may include
-// a zone identifier.
-func (u *URL) Hostname() string {
-	return stripPort(u.Host)
-}
-
-// Port returns the port part of u.Host, without the leading colon.
-// If u.Host doesn't contain a port, Port returns an empty string.
-func (u *URL) Port() string {
-	return portOnly(u.Host)
-}
-
-func stripPort(hostport string) string {
-	colon := strings.IndexByte(hostport, ':')
-	if colon == -1 {
-		return hostport
-	}
-	if i := strings.IndexByte(hostport, ']'); i != -1 {
-		return strings.TrimPrefix(hostport[:i], "[")
-	}
-	return hostport[:colon]
-}
-
-func portOnly(hostport string) string {
-	colon := strings.IndexByte(hostport, ':')
-	if colon == -1 {
-		return ""
-	}
-	if i := strings.Index(hostport, "]:"); i != -1 {
-		return hostport[i+len("]:"):]
-	}
-	if strings.Contains(hostport, "]") {
-		return ""
-	}
-	return hostport[colon+len(":"):]
 }
 
 // Marshaling interface implementations.
