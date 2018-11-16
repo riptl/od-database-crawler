@@ -326,7 +326,6 @@ func escape(s string, mode encoding) string {
 // by calling the EscapedPath method.
 type URL struct {
 	Scheme     Scheme
-	Opaque     string    // encoded opaque data
 	Host       string    // host or host:port
 	Path       string    // path (relative paths may omit leading slash)
 }
@@ -446,7 +445,6 @@ func (u *URL) parse(rawurl string, viaRequest bool) error {
 	if !strings.HasPrefix(rest, "/") {
 		if u.Scheme != SchemeInvalid {
 			// We consider rootless paths per RFC 3986 as opaque.
-			u.Opaque = rest
 			return nil
 		}
 		if viaRequest {
@@ -588,34 +586,30 @@ func (u *URL) String() string {
 		buf.WriteString(Schemes[u.Scheme])
 		buf.WriteByte(':')
 	}
-	if u.Opaque != "" {
-		buf.WriteString(u.Opaque)
-	} else {
-		if u.Scheme != SchemeInvalid || u.Host != "" {
-			if u.Host != "" || u.Path != "" {
-				buf.WriteString("//")
-			}
-			if h := u.Host; h != "" {
-				buf.WriteString(escape(h, encodeHost))
-			}
+	if u.Scheme != SchemeInvalid || u.Host != "" {
+		if u.Host != "" || u.Path != "" {
+			buf.WriteString("//")
 		}
-		path := u.Path
-		if path != "" && path[0] != '/' && u.Host != "" {
-			buf.WriteByte('/')
+		if h := u.Host; h != "" {
+			buf.WriteString(escape(h, encodeHost))
 		}
-		if buf.Len() == 0 {
-			// RFC 3986 §4.2
-			// A path segment that contains a colon character (e.g., "this:that")
-			// cannot be used as the first segment of a relative-path reference, as
-			// it would be mistaken for a scheme name. Such a segment must be
-			// preceded by a dot-segment (e.g., "./this:that") to make a relative-
-			// path reference.
-			if i := strings.IndexByte(path, ':'); i > -1 && strings.IndexByte(path[:i], '/') == -1 {
-				buf.WriteString("./")
-			}
-		}
-		buf.WriteString(path)
 	}
+	path := u.Path
+	if path != "" && path[0] != '/' && u.Host != "" {
+		buf.WriteByte('/')
+	}
+	if buf.Len() == 0 {
+		// RFC 3986 §4.2
+		// A path segment that contains a colon character (e.g., "this:that")
+		// cannot be used as the first segment of a relative-path reference, as
+		// it would be mistaken for a scheme name. Such a segment must be
+		// preceded by a dot-segment (e.g., "./this:that") to make a relative-
+		// path reference.
+		if i := strings.IndexByte(path, ':'); i > -1 && strings.IndexByte(path[:i], '/') == -1 {
+			buf.WriteString("./")
+		}
+	}
+	buf.WriteString(path)
 	return buf.String()
 }
 
@@ -692,11 +686,6 @@ func (u *URL) ResolveReference(url *URL, ref *URL) {
 		// We can ignore the error from setPath since we know we provided a
 		// validly-escaped path.
 		url.Path = resolvePath(ref.Path, "")
-		return
-	}
-	if ref.Opaque != "" {
-		url.Host = ""
-		url.Path = ""
 		return
 	}
 	// The "abs_path" or "rel_path" cases.
