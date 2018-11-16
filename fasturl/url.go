@@ -613,6 +613,14 @@ func (u *URL) String() string {
 	return buf.String()
 }
 
+func isRunesDot(r []rune) bool {
+	return len(r) == 1 && r[0] == '.'
+}
+
+func isRunesDoubleDot(r []rune) bool {
+	return len(r) == 2 && r[0] == '.' && r[1] == '.'
+}
+
 // resolvePath applies special path segments from refs and applies
 // them to base, per RFC 3986.
 func resolvePath(base, ref string) string {
@@ -628,7 +636,58 @@ func resolvePath(base, ref string) string {
 	if full == "" {
 		return ""
 	}
-	var dst []string
+
+	dst := make([]rune, len(full))
+	dst = dst[0:0]
+
+	start := 0
+	rs := []rune(full)
+	if len(rs) != 0 && rs[0] == '/' {
+		rs = rs[1:]
+	}
+	var stack []int
+	stack = append(stack, 0)
+	for i, c := range rs {
+		if c == '/' {
+			part := rs[start:i]
+			switch {
+			case isRunesDot(part):
+				start = i+1
+			case isRunesDoubleDot(part):
+				// Cut to the last slash
+				start = i+1
+				dst = dst[:stack[len(stack)-1]]
+				if len(stack) != 1 {
+					stack = stack[:len(stack)-1]
+				}
+			default:
+				start = i+1
+				stack = append(stack, len(dst))
+				dst = append(dst, '/')
+				dst = append(dst, part...)
+			}
+		} else if i == len(rs) - 1 {
+			part := rs[start:]
+			switch {
+			case isRunesDot(part):
+				dst = append(dst, '/')
+			case isRunesDoubleDot(part):
+				// Cut to the last slash
+				start = i+1
+				dst = dst[:stack[len(stack)-1]]
+				if len(stack) != 1 {
+					stack = stack[:len(stack)-1]
+				}
+				dst = append(dst, '/')
+			default:
+				dst = append(dst, '/')
+				dst = append(dst, part...)
+			}
+		}
+	}
+	return string(dst)
+
+	/*var dst []string
 	src := strings.Split(full, "/")
 	for _, elem := range src {
 		switch elem {
@@ -646,7 +705,7 @@ func resolvePath(base, ref string) string {
 		// Add final slash to the joined path.
 		dst = append(dst, "")
 	}
-	return "/" + strings.TrimPrefix(strings.Join(dst, "/"), "/")
+	return "/" + strings.TrimPrefix(strings.Join(dst, "/"), "/")*/
 }
 
 // IsAbs reports whether the URL is absolute.
