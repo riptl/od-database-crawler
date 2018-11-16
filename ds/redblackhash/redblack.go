@@ -14,6 +14,7 @@
 package redblackhash
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -41,42 +42,7 @@ type Node struct {
 }
 
 func (k *Key) Compare(o *Key) int {
-	// TODO Assembly
-	/*for i := 0; i < KeySize / 8; i++ {
-		a := uint64(k[i+0]      ) |
-			 uint64(k[i+1] >>  8) |
-			 uint64(k[i+2] >> 16) |
-			 uint64(k[i+3] >> 24) |
-			 uint64(k[i+4] >> 32) |
-			 uint64(k[i+5] >> 40) |
-			 uint64(k[i+6] >> 48) |
-			 uint64(k[i+7] >> 56)
-
-		b := uint64(o[i+0]      ) |
-			 uint64(o[i+1] >>  8) |
-			 uint64(o[i+2] >> 16) |
-			 uint64(o[i+3] >> 24) |
-			 uint64(o[i+4] >> 32) |
-			 uint64(o[i+5] >> 40) |
-			 uint64(o[i+6] >> 48) |
-			 uint64(o[i+7] >> 56)
-
-		switch {
-		case a < b:
-			return -1
-		case a > b:
-			return 1
-		}
-	}*/
-	for i := 0; i < KeySize; i++ {
-		switch {
-		case k[i] < o[i]:
-			return -1
-		case k[i] > o[i]:
-			return 1
-		}
-	}
-	return 0
+	return bytes.Compare(k[:], o[:])
 }
 
 // Put inserts node into the tree.
