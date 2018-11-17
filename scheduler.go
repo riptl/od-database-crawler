@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"github.com/terorie/oddb-go/fasturl"
+	"github.com/terorie/od-database-crawler/fasturl"
 	"os"
 	"path"
 	"sync/atomic"

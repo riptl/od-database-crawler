@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/sirupsen/logrus"
-	"github.com/terorie/oddb-go/fasturl"
+	"github.com/terorie/od-database-crawler/fasturl"
 	"github.com/urfave/cli"
 	"log"
 	"net/http"
@@ -15,7 +15,7 @@ import (
 )
 
 var app = cli.App {
-	Name:         "oddb-go",
+	Name:         "od-database-crawler",
 	Usage:        "OD-Database Go crawler",
 	Version:      "0.2",
 	BashComplete: cli.DefaultAppComplete,

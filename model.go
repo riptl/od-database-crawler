@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/terorie/oddb-go/ds/redblackhash"
-	"github.com/terorie/oddb-go/fasturl"
+	"github.com/terorie/od-database-crawler/ds/redblackhash"
+	"github.com/terorie/od-database-crawler/fasturl"
 	"sync"
 	"time"
 )

@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"github.com/terorie/oddb-go/ds/redblackhash"
-	"github.com/terorie/oddb-go/fasturl"
+	"github.com/terorie/od-database-crawler/ds/redblackhash"
+	"github.com/terorie/od-database-crawler/fasturl"
 	"github.com/valyala/fasthttp"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/net/html"
