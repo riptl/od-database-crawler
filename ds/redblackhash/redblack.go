@@ -16,6 +16,7 @@ package redblackhash
 import (
 	"bytes"
 	"fmt"
+	"sync"
 )
 
 const (
@@ -28,6 +29,7 @@ type Key [KeySize]byte
 
 // Tree holds elements of the red-black tree
 type Tree struct {
+	sync.Mutex
 	Root       *Node
 	size       int
 }

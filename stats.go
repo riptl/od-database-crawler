@@ -57,7 +57,7 @@ func Stats(c context.Context) {
 			runtime.ReadMemStats(&mem)
 
 			logrus.WithFields(logrus.Fields{
-				"queue_count": totalBuffered,
+				"queue_count": atomic.LoadInt64(&totalBuffered),
 				"heap": FormatByteCount(mem.Alloc),
 				"objects": mem.HeapObjects,
 				"num_gc": mem.NumGC,

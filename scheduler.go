@@ -8,6 +8,7 @@ import (
 	"github.com/terorie/od-database-crawler/fasturl"
 	"os"
 	"path"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -55,28 +56,80 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 	}
 }
 
-func (r *OD) Watch(results chan File) {
-	go r.Task.Collect(results)
-
-	// Wait for all jobs on remote to finish
-	r.Wait.Wait()
-	close(r.WCtx.in)
-	atomic.AddInt32(&activeTasks, -1)
-
-	logrus.WithField("url", r.BaseUri.String()).
-		Info("Crawler finished")
-
-	globalWait.Done()
-
-	close(results)
+func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
+	globalWait.Add(1)
+	now := time.Now()
+	od := &OD {
+		Task: *t,
+		BaseUri: *u,
+		Result: TaskResult {
+			WebsiteId: t.WebsiteId,
+			StartTime: now,
+			StartTimeUnix: now.Unix(),
+		},
+	}
+	remotes <- od
 }
 
-func (t *Task) Collect(results chan File) {
+func (o *OD) Watch(results chan File) {
+	// Wait for the file to be fully written
+	var fileLock sync.Mutex
+	fileLock.Lock()
+
+	go o.Task.Collect(results, &fileLock)
+
+	// Wait for all jobs on remote to finish
+	o.Wait.Wait()
+	close(o.WCtx.in)
+	atomic.AddInt32(&activeTasks, -1)
+
+	// Log finish
+
+	logrus.
+		WithField("url", o.BaseUri.String()).
+		WithField("duration", time.Since(o.Result.StartTime)).
+		Info("Crawler finished")
+
+	// Set status code
+	now := time.Now()
+	o.Result.EndTimeUnix = now.Unix()
+	fileCount := atomic.LoadUint64(&o.Result.FileCount)
+	if fileCount == 0 {
+		errorCount := atomic.LoadUint64(&o.Result.ErrorCount)
+		if errorCount == 0 {
+			o.Result.StatusCode = "empty"
+		} else {
+			o.Result.StatusCode = "directory listing failed"
+		}
+	} else {
+		o.Result.StatusCode = "success"
+	}
+
+	// Shut down Collect()
+	close(results)
+
+	// Wait for results to sync to file
+	fileLock.Lock()
+	fileLock.Unlock()
+
+	// Upload results
+	err := PushResult(&o.Result)
+	if err != nil {
+		logrus.WithError(err).
+			Error("Failed uploading result")
+	}
+
+	// Mark job as completely done
+	globalWait.Done()
+}
+
+func (t *Task) Collect(results chan File, done *sync.Mutex) {
 	err := t.collect(results)
 	if err != nil {
 		logrus.WithError(err).
 			Error("Failed saving crawl results")
 	}
+	done.Unlock()
 }
 
 func (t *Task) collect(results chan File) error {

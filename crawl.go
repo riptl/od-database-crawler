@@ -165,22 +165,27 @@ func (f *File) applyContentLength(v string) {
 	f.Size = size
 }
 
+// TODO Cleanup
 func (f *File) applyLastModified(v string) {
 	if v == "" {
 		return
 	}
+	var t time.Time
 	var err error
-	f.MTime, err = time.Parse(time.RFC1123, v)
+	t, err = time.Parse(time.RFC1123, v)
 	if err == nil {
+		f.MTime = t.Unix()
 		return
 	}
-	f.MTime, err = time.Parse(time.RFC850, v)
+	t, err = time.Parse(time.RFC850, v)
 	if err == nil {
+		f.MTime = t.Unix()
 		return
 	}
 	// TODO Parse asctime
-	f.MTime, err = time.Parse("2006-01-02", v[:10])
+	t, err = time.Parse("2006-01-02", v[:10])
 	if err == nil {
+		f.MTime = t.Unix()
 		return
 	}
 }

@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -31,7 +30,7 @@ func FetchTask() (t *Task, err error) {
 	switch res.StatusCode {
 	case 200:
 		break
-	case 500:
+	case 404, 500:
 		return nil, nil
 	default:
 		return nil, fmt.Errorf("http %s", res.Status)
@@ -45,6 +44,11 @@ func FetchTask() (t *Task, err error) {
 }
 
 func PushResult(result *TaskResult) (err error) {
+	if result.WebsiteId == 0 {
+		// Not a real result, don't push
+		return nil
+	}
+
 	filePath := filepath.Join(
 		".", "crawled",
 		fmt.Sprintf("%d.json", result.WebsiteId))
@@ -83,34 +87,41 @@ func PushResult(result *TaskResult) (err error) {
 	return
 }
 
-func uploadChunks(websiteId uint64, f *os.File) (err error) {
-	for iter := 1; iter > 0; iter++ {
+func uploadChunks(websiteId uint64, f *os.File) error {
+	eof := false
+	for iter := 1; !eof; iter++ {
 		// TODO Stream with io.Pipe?
 		var b bytes.Buffer
 
 		multi := multipart.NewWriter(&b)
 
 		// Set upload fields
+		var err error
 		err = multi.WriteField("token", config.Token)
-		if err != nil { return }
+		if err != nil { return err }
 		err = multi.WriteField("website_id", fmt.Sprintf("%d", websiteId))
-		if err != nil { return }
+		if err != nil { return err }
 
 		// Copy chunk to file_list
 		formFile, err := multi.CreateFormFile("file_list", "file_list")
-		_, err = io.CopyN(formFile, f, fileListChunkSize)
-		if err == io.EOF {
-			break
-		} else if err == io.ErrUnexpectedEOF {
+		var n int64
+		n, err = io.CopyN(formFile, f, fileListChunkSize)
+		if err != io.EOF {
+			return err
+		}
+		if n < fileListChunkSize {
 			err = nil
 			// Break at end of iteration
-			iter = -420
+			eof = true
 		}
+
+		multi.Close()
 
 		req, err := http.NewRequest(
 			http.MethodPost,
 			config.ServerUrl + "/task/upload",
 			&b)
+		req.Header.Set("content-type", multi.FormDataContentType())
 		if err != nil { return err }
 
 		res, err := serverClient.Do(req)
@@ -125,49 +136,38 @@ func uploadChunks(websiteId uint64, f *os.File) (err error) {
 		logrus.Infof("Uploading file list part %d: %s",
 			iter, res.Status)
 	}
-	return
+	return nil
 }
 
 func uploadResult(result *TaskResult) (err error) {
 	resultEnc, err := json.Marshal(result)
 	if err != nil { panic(err) }
 
-	payload := url.Values {
-		"token": {config.Token},
-		"result": {string(resultEnc)},
-	}.Encode()
-
-	req, err := http.NewRequest(
-		http.MethodPost,
+	res, err := serverClient.PostForm(
 		config.ServerUrl + "/task/complete",
-		strings.NewReader(payload))
-	if err != nil { return }
-
-	res, err := serverClient.Do(req)
+		url.Values {
+			"token": {config.Token},
+			"result": {string(resultEnc)},
+		},
+	)
 	if err != nil { return }
 	res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to cancel task: %s", res.Status)
+		return fmt.Errorf("%s", res.Status)
 	}
 
 	return
 }
 
 func CancelTask(websiteId uint64) (err error) {
-	form := url.Values{
-		"token": {config.Token},
-		"website_id": {strconv.FormatUint(websiteId, 10)},
-	}
-	encForm := form.Encode()
-
-	req, err := http.NewRequest(
-		http.MethodPost,
+	res, err := serverClient.PostForm(
 		config.ServerUrl + "/task/cancel",
-		strings.NewReader(encForm))
-	if err != nil { return }
-
-	res, err := serverClient.Do(req)
+		url.Values{
+			"token": {config.Token},
+			"website_id": {strconv.FormatUint(websiteId, 10)},
+		},
+	)
 	if err != nil { return }
 	res.Body.Close()
 

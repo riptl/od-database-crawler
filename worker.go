@@ -43,6 +43,7 @@ func (w WorkerContext) step(results chan<- File, job Job) {
 		if httpErr, ok := err.(HttpError); ok {
 			switch httpErr.code {
 			case
+				fasthttp.StatusFound,
 				fasthttp.StatusUnauthorized,
 				fasthttp.StatusForbidden,
 				fasthttp.StatusNotFound:
@@ -137,6 +138,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 				Error("Failed getting file")
 			return nil, err
 		}
+		atomic.AddUint64(&job.OD.Result.FileCount, 1)
 	}
 	return
 }

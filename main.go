@@ -83,11 +83,7 @@ func cmdBase(clic *cli.Context) error {
 				time.Sleep(30 * time.Second)
 				continue
 			}
-			globalWait.Add(1)
-			inRemotes <- &OD {
-				Task: t,
-				BaseUri: baseUri,
-			}
+			ScheduleTask(inRemotes, t, &baseUri)
 		}
 	}
 
@@ -122,14 +118,11 @@ func cmdCrawler(clic *cli.Context) error {
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
-	globalWait.Add(1)
-	inRemotes <- &OD {
-		Task: &Task{
-			WebsiteId: 0,
-			Url: u.String(),
-		},
-		BaseUri: u,
+	task := Task {
+		WebsiteId: 0,
+		Url: u.String(),
 	}
+	ScheduleTask(inRemotes, &task, &u)
 
 	// Wait for all jobs to finish
 	globalWait.Wait()

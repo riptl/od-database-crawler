@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+type Task struct {
+	WebsiteId uint64 `json:"website_id"`
+	Url       string `json:"url"`
+}
+
+type TaskResult struct {
+	StatusCode    string    `json:"status_code"`
+	FileCount     uint64    `json:"file_count"`
+	ErrorCount    uint64    `json:"-"`
+	StartTime     time.Time `json:"-"`
+	StartTimeUnix int64     `json:"start_time"`
+	EndTimeUnix   int64     `json:"end_time"`
+	WebsiteId     uint64    `json:"website_id"`
+}
+
 type Job struct {
 	OD        *OD
 	Uri       fasturl.URL
@@ -16,26 +31,25 @@ type Job struct {
 }
 
 type OD struct {
-	Task    *Task
+	Task    Task
+	Result  TaskResult
 	Wait    sync.WaitGroup
 	BaseUri fasturl.URL
 	WCtx    WorkerContext
 	Scanned redblackhash.Tree
-
-	lock    sync.Mutex
 }
 
 type File struct {
-	Name  string    `json:"name"`
-	Size  int64     `json:"size"`
-	MTime time.Time `json:"mtime"`
-	Path  string    `json:"path"`
-	IsDir bool      `json:"-"`
+	Name  string `json:"name"`
+	Size  int64  `json:"size"`
+	MTime int64  `json:"mtime"`
+	Path  string `json:"path"`
+	IsDir bool   `json:"-"`
 }
 
 func (o *OD) LoadOrStoreKey(k *redblackhash.Key) (exists bool) {
-	o.lock.Lock()
-	defer o.lock.Unlock()
+	o.Scanned.Lock()
+	defer o.Scanned.Unlock()
 
 	exists = o.Scanned.Get(k)
 	if exists { return true }
