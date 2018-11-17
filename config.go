@@ -12,6 +12,7 @@ import (
 var config struct {
 	ServerUrl  string
 	Token      string
+	ChunkSize  uint
 	Retries    int
 	Workers    int
 	Timeout    time.Duration
@@ -25,6 +26,7 @@ var config struct {
 const (
 	ConfServerUrl  = "server.url"
 	ConfToken      = "server.token"
+	ConfChunkSize  = "server.upload_chunk"
 	ConfTasks      = "crawl.tasks"
 	ConfRetries    = "crawl.retries"
 	ConfWorkers    = "crawl.connections"
@@ -44,6 +46,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
 	viper.SetDefault(ConfPrintHTTP, false)
+	viper.SetDefault(ConfChunkSize, "1 MB")
 }
 
 func readConfig() {
@@ -64,6 +67,11 @@ func readConfig() {
 	config.Token = viper.GetString(ConfToken)
 	if config.Token == "" {
 		configMissing(ConfToken)
+	}
+
+	config.ChunkSize = viper.GetSizeInBytes(ConfChunkSize)
+	if config.ChunkSize < 100 {
+		configOOB(ConfChunkSize, config.ChunkSize)
 	}
 
 	config.Retries = viper.GetInt(ConfRetries)
@@ -100,7 +108,7 @@ func configMissing(key string) {
 	os.Exit(1)
 }
 
-func configOOB(key string, v int) {
-	fmt.Fprintf(os.Stderr, "config: illegal value %d for %key!\n", v, key)
+func configOOB(key string, v interface{}) {
+	fmt.Fprintf(os.Stderr, "config: illegal value %v for key %s!\n", v, key)
 	os.Exit(1)
 }

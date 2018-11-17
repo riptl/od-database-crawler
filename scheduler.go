@@ -13,7 +13,9 @@ import (
 	"time"
 )
 
-var activeTasks int32
+var activeTasksLock sync.Mutex
+var activeTasks = make(map[uint64]bool)
+var numActiveTasks int32
 var totalBuffered int64
 
 func Schedule(c context.Context, remotes <-chan *OD) {
@@ -33,7 +35,7 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		}
 
 		// Enqueue initial job
-		atomic.AddInt32(&activeTasks, 1)
+		atomic.AddInt32(&numActiveTasks, 1)
 		remote.WCtx.queueJob(Job{
 			OD:     remote,
 			Uri:    remote.BaseUri,
@@ -45,7 +47,7 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		go remote.Watch(results)
 
 		// Sleep if max number of tasks are active
-		for atomic.LoadInt32(&activeTasks) > config.Tasks {
+		for atomic.LoadInt32(&numActiveTasks) > config.Tasks {
 			select {
 			case <-c.Done():
 				return
@@ -57,6 +59,10 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 }
 
 func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
+	if !t.register() {
+		return
+	}
+
 	globalWait.Add(1)
 	now := time.Now()
 	od := &OD {
@@ -71,40 +77,87 @@ func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
 	remotes <- od
 }
 
+func (t *Task) register() bool {
+	activeTasksLock.Lock()
+	defer activeTasksLock.Unlock()
+
+	if _, known := activeTasks[t.WebsiteId]; known {
+		return false
+	} else {
+		activeTasks[t.WebsiteId] = true
+		return true
+	}
+}
+
+func (t *Task) unregister() {
+	activeTasksLock.Lock()
+	delete(activeTasks, t.WebsiteId)
+	activeTasksLock.Unlock()
+}
+
 func (o *OD) Watch(results chan File) {
+	// Mark job as completely done
+	defer globalWait.Done()
+	defer o.Task.unregister()
+
 	filePath := path.Join("crawled", fmt.Sprintf("%d.json", o.Task.WebsiteId))
 
 	// Open crawl results file
-	// TODO Print errors
-	err := os.MkdirAll("crawled", 0755)
-	if err != nil { return }
 	f, err := os.OpenFile(
 		filePath,
 		os.O_CREATE | os.O_RDWR | os.O_TRUNC,
 		0644,
 	)
-
-	if err != nil { return }
+	if err != nil {
+		logrus.WithError(err).
+			Error("Failed saving crawl results")
+		return
+	}
 	defer f.Close()
 	defer os.Remove(filePath)
 
-	// Wait for the file to be fully written
-	var fileLock sync.Mutex
-	fileLock.Lock()
+	// Listen for exit code of Collect()
+	collectErrC := make(chan error)
 
-	go o.Task.Collect(results, f, &fileLock)
+	// Block until all results are written
+	// (closes results channel)
+	o.handleCollect(results, f, collectErrC)
+
+	// Exit code of Collect()
+	err = <-collectErrC
+	close(collectErrC)
+	if err != nil {
+		logrus.WithError(err).
+			Error("Failed saving crawl results")
+		return
+	}
+
+	// Upload results
+	err = PushResult(&o.Result, f)
+	if err != nil {
+		logrus.WithError(err).
+			Error("Failed uploading crawl results")
+		return
+	}
+}
+
+func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error) {
+	// Begin collecting results
+	go o.Task.Collect(results, f, collectErrC)
+	defer close(results)
 
 	// Wait for all jobs on remote to finish
 	o.Wait.Wait()
 	close(o.WCtx.in)
-	atomic.AddInt32(&activeTasks, -1)
+	atomic.AddInt32(&numActiveTasks, -1)
 
 	// Log finish
 
-	logrus.
-		WithField("url", o.BaseUri.String()).
-		WithField("duration", time.Since(o.Result.StartTime)).
-		Info("Crawler finished")
+	logrus.WithFields(logrus.Fields{
+		"id":  o.Task.WebsiteId,
+		"url": o.BaseUri.String(),
+		"duration": time.Since(o.Result.StartTime),
+	}).Info("Crawler finished")
 
 	// Set status code
 	now := time.Now()
@@ -120,32 +173,15 @@ func (o *OD) Watch(results chan File) {
 	} else {
 		o.Result.StatusCode = "success"
 	}
-
-	// Shut down Collect()
-	close(results)
-
-	// Wait for results to sync to file
-	fileLock.Lock()
-	fileLock.Unlock()
-
-	// Upload results
-	err = PushResult(&o.Result, f)
-	if err != nil {
-		logrus.WithError(err).
-			Error("Failed uploading result")
-	}
-
-	// Mark job as completely done
-	globalWait.Done()
 }
 
-func (t *Task) Collect(results chan File, f *os.File, done *sync.Mutex) {
+func (t *Task) Collect(results chan File, f *os.File, errC chan<- error) {
 	err := t.collect(results, f)
 	if err != nil {
 		logrus.WithError(err).
 			Error("Failed saving crawl results")
 	}
-	done.Unlock()
+	errC <- err
 }
 
 func (t *Task) collect(results chan File, f *os.File) error {

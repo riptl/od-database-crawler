@@ -40,6 +40,12 @@ func main() {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:42069", nil))
 	}()
+
+	err := os.MkdirAll("crawled", 0755)
+	if err != nil {
+		panic(err)
+	}
+
 	app.Run(os.Args)
 }
 
@@ -69,7 +75,7 @@ func cmdBase(_ *cli.Context) error {
 			}
 			if t == nil {
 				// No new task
-				if atomic.LoadInt32(&activeTasks) == 0 {
+				if atomic.LoadInt32(&numActiveTasks) == 0 {
 					logrus.Info("Waiting …")
 				}
 				continue
