@@ -12,6 +12,8 @@ import (
 var config struct {
 	ServerUrl  string
 	Token      string
+	ServerTimeout time.Duration
+	Recheck    time.Duration
 	ChunkSize  uint
 	Retries    int
 	Workers    int
@@ -26,6 +28,8 @@ var config struct {
 const (
 	ConfServerUrl  = "server.url"
 	ConfToken      = "server.token"
+	ConfServerTimeout = "server.timeout"
+	ConfRecheck    = "server.recheck"
 	ConfChunkSize  = "server.upload_chunk"
 	ConfTasks      = "crawl.tasks"
 	ConfRetries    = "crawl.retries"
@@ -46,6 +50,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
 	viper.SetDefault(ConfPrintHTTP, false)
+	viper.SetDefault(ConfRecheck, 3 * time.Second)
 	viper.SetDefault(ConfChunkSize, "1 MB")
 }
 
@@ -68,6 +73,10 @@ func readConfig() {
 	if config.Token == "" {
 		configMissing(ConfToken)
 	}
+
+	config.ServerTimeout = viper.GetDuration(ConfServerTimeout)
+
+	config.Recheck = viper.GetDuration(ConfRecheck)
 
 	config.ChunkSize = viper.GetSizeInBytes(ConfChunkSize)
 	if config.ChunkSize < 100 {

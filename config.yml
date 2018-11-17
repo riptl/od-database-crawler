@@ -2,8 +2,19 @@
 server:
   # Connection URL
   url: http://od-db.mine.terorie.com/api
+
   # Server auth token
   token:
+
+  # Request timeout
+  timeout: 60s
+
+  # Recheck interval
+  # The crawler periodically asks the server
+  # for new jobs. Sets the minimum wait time
+  # between /task/get requests to the server.
+  recheck: 1s
+
   # Upload chunk size
   # If the value is too high, the upload fails.
   upload_chunk: 1 MB

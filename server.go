@@ -17,7 +17,9 @@ const (
 	fileListChunkSize int64 = 5000000 // 5 mb
 )
 
-var serverClient = http.DefaultClient
+var serverClient = http.Client {
+	Timeout: config.ServerTimeout,
+}
 
 func FetchTask() (t *Task, err error) {
 	res, err := serverClient.PostForm(

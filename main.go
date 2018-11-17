@@ -59,7 +59,7 @@ func cmdBase(_ *cli.Context) error {
 	inRemotes := make(chan *OD)
 	go Schedule(forceCtx, inRemotes)
 
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(config.Recheck)
 	defer ticker.Stop()
 	for {
 		select {
