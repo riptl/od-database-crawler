@@ -811,3 +811,57 @@ func validUserinfo(s string) bool {
 	}
 	return true
 }
+
+func PathUnescape(s string) string {
+	newStr, err := pathUnescape(s)
+	if err != nil {
+		return s
+	} else {
+		return newStr
+	}
+}
+
+func pathUnescape(s string) (string, error) {
+	// Count %, check that they're well-formed.
+	n := 0
+	for i := 0; i < len(s); {
+		switch s[i] {
+		case '%':
+			n++
+			if i+2 >= len(s) || !ishex(s[i+1]) || !ishex(s[i+2]) {
+				s = s[i:]
+				if len(s) > 3 {
+					s = s[:3]
+				}
+				return "", EscapeError(s)
+			}
+			i += 3
+		default:
+			i++
+		}
+	}
+
+	if n == 0 {
+		return s, nil
+	}
+
+	t := make([]byte, len(s)-2*n)
+	j := 0
+	for i := 0; i < len(s); {
+		switch s[i] {
+		case '%':
+			t[j] = unhex(s[i+1])<<4 | unhex(s[i+2])
+			j++
+			i += 3
+		case '+':
+			t[j] = '+'
+			j++
+			i++
+		default:
+			t[j] = s[i]
+			j++
+			i++
+		}
+	}
+	return string(t), nil
+}

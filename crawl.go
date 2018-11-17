@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/terorie/oddb-go/ds/redblackhash"
 	"github.com/terorie/oddb-go/fasturl"
 	"github.com/valyala/fasthttp"
@@ -190,15 +189,7 @@ func checkStatusCode(status int) error {
 	switch status {
 	case fasthttp.StatusOK:
 		return nil
-
-	case fasthttp.StatusTooManyRequests:
-		return ErrRateLimit
-
-	case fasthttp.StatusForbidden,
-		fasthttp.StatusUnauthorized:
-		return ErrForbidden
-
 	default:
-		return fmt.Errorf("got HTTP status %d", status)
+		return &HttpError{status}
 	}
 }

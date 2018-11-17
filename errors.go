@@ -1,8 +1,17 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var ErrRateLimit = errors.New("too many requests")
-var ErrForbidden = errors.New("access denied")
 var ErrKnown     = errors.New("already crawled")
 
+type HttpError struct {
+	code int
+}
+
+func (e HttpError) Error() string {
+	return fmt.Sprintf("http status %d", e.code)
+}

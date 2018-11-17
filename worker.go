@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/sirupsen/logrus"
+	"github.com/valyala/fasthttp"
 	"math"
 	"sort"
 	"strings"
@@ -39,9 +40,16 @@ func (w WorkerContext) step(results chan<- File, job Job) {
 	if err != nil {
 		job.Fails++
 
-		if err == ErrForbidden {
-			// Don't attempt crawling again
-			return
+		if httpErr, ok := err.(HttpError); ok {
+			switch httpErr.code {
+			case
+				fasthttp.StatusUnauthorized,
+				fasthttp.StatusForbidden,
+				fasthttp.StatusNotFound:
+				return
+			case fasthttp.StatusTooManyRequests:
+				err = ErrRateLimit
+			}
 		}
 
 		if job.Fails > config.Retries {

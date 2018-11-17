@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/terorie/oddb-go/fasturl"
 	"os"
 	"path"
 	"sync/atomic"
@@ -91,6 +92,8 @@ func (t *Task) collect(results chan File) error {
 	defer f.Close()
 
 	for result := range results {
+		result.Path = fasturl.PathUnescape(result.Path)
+		result.Name = fasturl.PathUnescape(result.Name)
 		resJson, err := json.Marshal(result)
 		if err != nil { panic(err) }
 		_, err = f.Write(resJson)
