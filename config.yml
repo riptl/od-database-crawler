@@ -16,13 +16,18 @@ output:
 
 # Crawler settings
 crawl:
-  # Number of sites that can be
-  # processed at once
-  tasks: 300
+  # Number of sites that can be processed at once
+  tasks: 100
+
   # Number of connections per site
-  connections: 20
+  # Please be careful with this setting!
+  # The crawler fires fast and more than
+  # ten connections can overwhelm a server.
+  connections: 10
+
   # How often to retry getting data
   # from the site before giving up
   retries: 5
+
   # Time before discarding a network request
   timeout: 10s
