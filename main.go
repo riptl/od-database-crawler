@@ -43,7 +43,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func cmdBase(clic *cli.Context) error {
+func cmdBase(_ *cli.Context) error {
 	readConfig()
 
 	// TODO Graceful shutdown
@@ -82,10 +82,10 @@ func cmdBase(clic *cli.Context) error {
 				err = nil
 
 				// Give back task
-				err2 := CancelTask(t.WebsiteId)
-				if err2 != nil {
-					logrus.Error(err2)
-				}
+				//err2 := CancelTask(t.WebsiteId)
+				//if err2 != nil {
+				//	logrus.Error(err2)
+				//}
 
 				continue
 			} else if err != nil {
