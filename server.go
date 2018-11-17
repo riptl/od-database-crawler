@@ -64,15 +64,8 @@ func PushResult(result *TaskResult, f *os.File) (err error) {
 		return
 	}
 
-	err = uploadResult(result)
-	if err != nil {
-		logrus.Errorf("Failed to upload result: %s", err)
-		err2 := CancelTask(result.WebsiteId)
-		if err2 != nil {
-			logrus.Error(err2)
-		}
-		return
-	}
+	// Upload result ignoring errors
+	uploadResult(result)
 
 	return
 }
@@ -144,7 +137,7 @@ func uploadResult(result *TaskResult) (err error) {
 	res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s", res.Status)
+		return HttpError{res.StatusCode}
 	}
 
 	return
