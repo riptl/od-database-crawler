@@ -73,12 +73,17 @@ func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
 
 func (o *OD) Watch(results chan File) {
 	filePath := path.Join("crawled", fmt.Sprintf("%d.json", o.Task.WebsiteId))
+
 	// Open crawl results file
+	// TODO Print errors
+	err := os.MkdirAll("crawled", 0755)
+	if err != nil { return }
 	f, err := os.OpenFile(
 		filePath,
 		os.O_CREATE | os.O_RDWR | os.O_TRUNC,
 		0644,
 	)
+
 	if err != nil { return }
 	defer f.Close()
 	defer os.Remove(filePath)
@@ -144,9 +149,6 @@ func (t *Task) Collect(results chan File, f *os.File, done *sync.Mutex) {
 }
 
 func (t *Task) collect(results chan File, f *os.File) error {
-	err := os.MkdirAll("crawled", 0755)
-	if err != nil { return err }
-
 	for result := range results {
 		result.Path = fasturl.PathUnescape(result.Path)
 		result.Name = fasturl.PathUnescape(result.Name)
