@@ -1,12 +1,7 @@
-# oddb Go crawler 🚀
+# od-database Go crawler 🚀
 > by terorie 2018 :P
 
+ * Crawler for [__OD-Database__](https://github.com/simon987/od-database)
  * Crawls HTTP open directories (standard Web Server Listings)
  * Gets name, path, size and modification time of all files
- * Soon: Will work as a crawler for [OD-Database](https://github.com/simon987/od-database)!
-
-Stress test crawling [pandoradir](https://github.com/terorie/pandoradir)
-on an average laptop (~10K requests per second, 4 connections):
-![image](.github/stress.png)
-
-Memory usage is being optimized :P
+ * Lightweight and fast: __over 9000 requests per second__ on a standard laptop
