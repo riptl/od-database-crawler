@@ -40,7 +40,7 @@ func (w WorkerContext) step(results chan<- File, job Job) {
 	if err != nil {
 		job.Fails++
 
-		if httpErr, ok := err.(HttpError); ok {
+		if httpErr, ok := err.(*HttpError); ok {
 			switch httpErr.code {
 			case
 				fasthttp.StatusFound,
