@@ -63,7 +63,7 @@ func cmdBase(_ *cli.Context) error {
 			t, err := FetchTask()
 			if err != nil {
 				logrus.WithError(err).
-					Error("Failed getting new task")
+					Error("Failed to get new task")
 				time.Sleep(30 * time.Second)
 				continue
 			}
@@ -90,7 +90,7 @@ func cmdBase(_ *cli.Context) error {
 				continue
 			} else if err != nil {
 				logrus.WithError(err).
-					Error("Failed getting new task")
+					Error("Failed to get new task")
 				time.Sleep(30 * time.Second)
 				continue
 			}

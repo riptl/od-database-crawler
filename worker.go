@@ -88,7 +88,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			if !isErrSilent(err) {
 				logrus.WithError(err).
 					WithField("url", job.UriStr).
-					Error("Failed getting dir")
+					Error("Failed to crawl dir")
 			}
 			return nil, err
 		}
@@ -139,7 +139,7 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 			if !isErrSilent(err) {
 				logrus.WithError(err).
 					WithField("url", job.UriStr).
-					Error("Failed getting file")
+					Error("Failed to crawl file")
 			}
 			return nil, err
 		}
