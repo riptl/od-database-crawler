@@ -19,6 +19,7 @@ var config struct {
 	CrawlStats time.Duration
 	AllocStats time.Duration
 	Verbose    bool
+	PrintHTTP  bool
 }
 
 const (
@@ -31,6 +32,7 @@ const (
 	ConfCrawlStats = "output.crawl_stats"
 	ConfAllocStats = "output.resource_stats"
 	ConfVerbose    = "output.verbose"
+	ConfPrintHTTP  = "output.http"
 )
 
 func prepareConfig() {
@@ -41,6 +43,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfCrawlStats, 3 * time.Second)
 	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
+	viper.SetDefault(ConfPrintHTTP, false)
 }
 
 func readConfig() {
@@ -88,6 +91,8 @@ func readConfig() {
 	if config.Verbose {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
+
+	config.PrintHTTP = viper.GetBool(ConfPrintHTTP)
 }
 
 func configMissing(key string) {

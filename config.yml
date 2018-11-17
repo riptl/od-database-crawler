@@ -13,6 +13,8 @@ output:
   resource_stats: 10s
   # More output? (Every listed dir)
   verbose: false
+  # Print HTTP errors (Super spammy)
+  http: false
 
 # Crawler settings
 crawl:

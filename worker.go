@@ -43,6 +43,7 @@ func (w WorkerContext) step(results chan<- File, job Job) {
 		if httpErr, ok := err.(*HttpError); ok {
 			switch httpErr.code {
 			case
+				fasthttp.StatusMovedPermanently,
 				fasthttp.StatusFound,
 				fasthttp.StatusUnauthorized,
 				fasthttp.StatusForbidden,
@@ -84,9 +85,11 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 		// Load directory
 		links, err := GetDir(job, f)
 		if err != nil {
-			logrus.WithError(err).
-				WithField("url", job.UriStr).
-				Error("Failed getting dir")
+			if !isErrSilent(err) {
+				logrus.WithError(err).
+					WithField("url", job.UriStr).
+					Error("Failed getting dir")
+			}
 			return nil, err
 		}
 
@@ -133,9 +136,11 @@ func DoJob(job *Job, f *File) (newJobs []Job, err error) {
 		// Load file
 		err := GetFile(job.Uri, f)
 		if err != nil {
-			logrus.WithError(err).
-				WithField("url", job.UriStr).
-				Error("Failed getting file")
+			if !isErrSilent(err) {
+				logrus.WithError(err).
+					WithField("url", job.UriStr).
+					Error("Failed getting file")
+			}
 			return nil, err
 		}
 		atomic.AddUint64(&job.OD.Result.FileCount, 1)
@@ -160,4 +165,13 @@ func (w WorkerContext) queueJob(job Job) {
 
 func (w WorkerContext) finishJob(job *Job) {
 	job.OD.Wait.Done()
+}
+
+func isErrSilent(err error) bool {
+	if !config.PrintHTTP {
+		if _, ok := err.(*HttpError); ok {
+			return true
+		}
+	}
+	return false
 }
