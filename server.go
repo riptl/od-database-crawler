@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 )
 
@@ -43,26 +42,17 @@ func FetchTask() (t *Task, err error) {
 	return
 }
 
-func PushResult(result *TaskResult) (err error) {
+func PushResult(result *TaskResult, f *os.File) (err error) {
 	if result.WebsiteId == 0 {
 		// Not a real result, don't push
 		return nil
 	}
 
-	filePath := filepath.Join(
-		".", "crawled",
-		fmt.Sprintf("%d.json", result.WebsiteId))
-
-	defer os.Remove(filePath)
-
-	f, err := os.Open(filePath)
-	if os.IsNotExist(err) {
-		err = fmt.Errorf("cannot upload result: %s does not exist", filePath)
-		return
-	} else if err != nil {
+	// Rewind to the beginning of the file
+	_, err = f.Seek(0, 0)
+	if err != nil {
 		return
 	}
-	defer f.Close()
 
 	err = uploadChunks(result.WebsiteId, f)
 	if err != nil {
