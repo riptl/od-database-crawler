@@ -17,10 +17,9 @@ import (
 var app = cli.App {
 	Name:         "od-database-crawler",
 	Usage:        "OD-Database Go crawler",
-	Version:      "0.2",
+	Version:      "1.0",
 	BashComplete: cli.DefaultAppComplete,
 	Writer:       os.Stdout,
-	Compiled:     buildDate,
 	Action:       cmdBase,
 	Commands:     []cli.Command{
 		{
@@ -146,8 +145,3 @@ func cmdCrawler(clic *cli.Context) error {
 
 	return nil
 }
-
-var buildDate = time.Date(
-	2018, 11, 17,
-	23, 32, 0, 0,
-	time.UTC)

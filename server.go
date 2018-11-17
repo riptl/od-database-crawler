@@ -114,8 +114,9 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 				iter, res.Status)
 		}
 
-		logrus.Infof("Uploading file list part %d: %s",
-			iter, res.Status)
+		logrus.WithField("id", websiteId).
+			WithField("part", iter).
+			Infof("Uploading files chunk")
 	}
 	return nil
 }
