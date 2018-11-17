@@ -33,6 +33,8 @@ var Schemes = [SchemeCount]string {
 	"https",
 }
 
+var ErrUnknownScheme = errors.New("unknown protocol scheme")
+
 // Error reports an error and the operation and URL that caused it.
 type Error struct {
 	Op  string
@@ -353,7 +355,7 @@ func getscheme(rawurl string) (scheme Scheme, path string, err error) {
 			case "https":
 				scheme = SchemeHTTPS
 			default:
-				return SchemeInvalid, "", errors.New("unknown protocol scheme")
+				return SchemeInvalid, "", ErrUnknownScheme
 			}
 
 			path = rawurl[i+1:]

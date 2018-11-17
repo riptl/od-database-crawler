@@ -62,6 +62,11 @@ func cmdBase(clic *cli.Context) error {
 		case <-ticker.C:
 			t, err := FetchTask()
 			if err != nil {
+				if err == fasturl.ErrUnknownScheme {
+					// Not an error
+					err = nil
+					continue
+				}
 				logrus.WithError(err).
 					Error("Failed getting new task")
 				time.Sleep(30 * time.Second)
