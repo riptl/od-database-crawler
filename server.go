@@ -96,7 +96,7 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 		formFile, err := multi.CreateFormFile("file_list", "file_list")
 		var n int64
 		n, err = io.CopyN(formFile, f, fileListChunkSize)
-		if err != io.EOF {
+		if err != io.EOF && err != nil {
 			return err
 		}
 		if n < fileListChunkSize {
