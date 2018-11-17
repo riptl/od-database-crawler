@@ -80,6 +80,13 @@ func cmdBase(clic *cli.Context) error {
 			if urlErr, ok := err.(*fasturl.Error); ok && urlErr.Err == fasturl.ErrUnknownScheme {
 				// Not an error
 				err = nil
+
+				// Give back task
+				err2 := CancelTask(t.WebsiteId)
+				if err2 != nil {
+					logrus.Error(err2)
+				}
+
 				continue
 			} else if err != nil {
 				logrus.WithError(err).
