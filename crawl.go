@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"github.com/terorie/od-database-crawler/ds/redblackhash"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"github.com/valyala/fasthttp"
@@ -13,7 +14,11 @@ import (
 	"time"
 )
 
-var client fasthttp.Client
+var client = fasthttp.Client {
+	TLSConfig: &tls.Config{
+		InsecureSkipVerify: true,
+	},
+}
 
 func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	f.IsDir = true

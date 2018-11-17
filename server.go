@@ -13,10 +13,6 @@ import (
 	"strconv"
 )
 
-const (
-	fileListChunkSize int64 = 5000000 // 5 mb
-)
-
 var serverClient = http.Client {
 	Timeout: config.ServerTimeout,
 }
@@ -90,11 +86,11 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 		// Copy chunk to file_list
 		formFile, err := multi.CreateFormFile("file_list", "file_list")
 		var n int64
-		n, err = io.CopyN(formFile, f, fileListChunkSize)
+		n, err = io.CopyN(formFile, f, config.ChunkSize)
 		if err != io.EOF && err != nil {
 			return err
 		}
-		if n < fileListChunkSize {
+		if n < config.ChunkSize {
 			err = nil
 			// Break at end of iteration
 			eof = true

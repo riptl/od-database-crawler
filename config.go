@@ -14,7 +14,7 @@ var config struct {
 	Token      string
 	ServerTimeout time.Duration
 	Recheck    time.Duration
-	ChunkSize  uint
+	ChunkSize  int64
 	Retries    int
 	Workers    int
 	Timeout    time.Duration
@@ -78,7 +78,7 @@ func readConfig() {
 
 	config.Recheck = viper.GetDuration(ConfRecheck)
 
-	config.ChunkSize = viper.GetSizeInBytes(ConfChunkSize)
+	config.ChunkSize = int64(viper.GetSizeInBytes(ConfChunkSize))
 	if config.ChunkSize < 100 {
 		configOOB(ConfChunkSize, config.ChunkSize)
 	}

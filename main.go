@@ -148,6 +148,6 @@ func cmdCrawler(clic *cli.Context) error {
 }
 
 var buildDate = time.Date(
-	2018, 11, 15,
-	23, 24, 0, 0,
+	2018, 11, 17,
+	23, 32, 0, 0,
 	time.UTC)
