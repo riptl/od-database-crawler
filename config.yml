@@ -23,12 +23,19 @@ server:
 output:
   # Crawl statistics
   crawl_stats: 1s
+
   # CPU/RAM/Job queue stats
   resource_stats: 10s
+
   # More output? (Every listed dir)
   verbose: false
+
   # Print HTTP errors (Super spammy)
   http: false
+
+  # Log file
+  # If empty, no log file is created.
+  log: crawler.log
 
 # Crawler settings
 crawl:
@@ -49,4 +56,5 @@ crawl:
   timeout: 10s
 
   # Crawler User-Agent
+  # If empty, no User-Agent header is sent.
   user-agent: "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0"

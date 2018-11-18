@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 // https://programming.guide/go/formatting-byte-size-to-human-readable-format.html
 func FormatByteCount(b uint64) string {
@@ -14,5 +17,22 @@ func FormatByteCount(b uint64) string {
 			exp++
 		}
 		return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
+	}
+}
+
+type Hooks struct {
+	m sync.Mutex
+	l []func()
+}
+
+func (h *Hooks) Add(hook func()) {
+	h.m.Lock()
+	h.l = append(h.l, hook)
+	h.m.Unlock()
+}
+
+func (h *Hooks) Execute() {
+	for _, hook := range h.l {
+		hook()
 	}
 }

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -41,6 +43,7 @@ const (
 	ConfAllocStats = "output.resource_stats"
 	ConfVerbose    = "output.verbose"
 	ConfPrintHTTP  = "output.http"
+	ConfLogFile    = "output.log"
 )
 
 func prepareConfig() {
@@ -53,6 +56,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
 	viper.SetDefault(ConfPrintHTTP, false)
+	viper.SetDefault(ConfLogFile, "")
 	viper.SetDefault(ConfRecheck, 3 * time.Second)
 	viper.SetDefault(ConfChunkSize, "1 MB")
 }
@@ -112,6 +116,17 @@ func readConfig() {
 	config.Verbose = viper.GetBool(ConfVerbose)
 	if config.Verbose {
 		logrus.SetLevel(logrus.DebugLevel)
+	}
+
+	if filePath := viper.GetString(ConfLogFile); filePath != "" {
+		f, err := os.OpenFile(filePath, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0644)
+		bufWriter := bufio.NewWriter(f)
+		if err != nil { panic(err) }
+		exitHooks.Add(func() {
+			bufWriter.Flush()
+			f.Close()
+		})
+		logrus.SetOutput(io.MultiWriter(os.Stdout, bufWriter))
 	}
 
 	config.PrintHTTP = viper.GetBool(ConfPrintHTTP)

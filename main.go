@@ -5,9 +5,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"github.com/urfave/cli"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -29,28 +26,29 @@ var app = cli.App {
 			Action:    cmdCrawler,
 		},
 	},
+	After: func(i *cli.Context) error {
+		exitHooks.Execute()
+		return nil
+	},
 }
+
+var exitHooks Hooks
 
 func init() {
 	prepareConfig()
 }
 
 func main() {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:42069", nil))
-	}()
-
 	err := os.MkdirAll("crawled", 0755)
 	if err != nil {
 		panic(err)
 	}
 
+	readConfig()
 	app.Run(os.Args)
 }
 
 func cmdBase(_ *cli.Context) error {
-	readConfig()
-
 	// TODO Graceful shutdown
 	appCtx := context.Background()
 	forceCtx := context.Background()
@@ -107,8 +105,6 @@ func cmdBase(_ *cli.Context) error {
 }
 
 func cmdCrawler(clic *cli.Context) error {
-	readConfig()
-
 	if clic.NArg() != 1 {
 		cli.ShowCommandHelpAndExit(clic, "crawl", 1)
 	}
