@@ -18,3 +18,8 @@ name=${appname}-${tag}-mac
 GOOS="darwin" GOARCH="amd64" go build -ldflags="-s -w" -o $name
 gzip -f $name
 echo $name
+
+name=${appname}-${tag}-freebsd
+GOOS="freebsd" GOARCH="amd64" go build -ldflags="-s -w" -o $name
+gzip -f $name
+echo $name
