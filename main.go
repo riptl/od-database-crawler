@@ -14,7 +14,7 @@ import (
 var app = cli.App {
 	Name:         "od-database-crawler",
 	Usage:        "OD-Database Go crawler",
-	Version:      "1.0.1",
+	Version:      "1.0.2",
 	BashComplete: cli.DefaultAppComplete,
 	Writer:       os.Stdout,
 	Action:       cmdBase,
