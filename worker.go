@@ -42,15 +42,11 @@ func (w WorkerContext) step(results chan<- File, job Job) {
 
 		if httpErr, ok := err.(*HttpError); ok {
 			switch httpErr.code {
-			case
-				fasthttp.StatusMovedPermanently,
-				fasthttp.StatusFound,
-				fasthttp.StatusUnauthorized,
-				fasthttp.StatusForbidden,
-				fasthttp.StatusNotFound:
-				return
 			case fasthttp.StatusTooManyRequests:
 				err = ErrRateLimit
+			default:
+				// Don't retry HTTP error codes
+				return
 			}
 		}
 
