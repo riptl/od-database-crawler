@@ -50,6 +50,8 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 
 	var linkHref string
 	for {
+		err = nil
+
 		tokenType := doc.Next()
 		if tokenType == html.ErrorToken {
 			break
@@ -80,16 +82,16 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 				linkHref = ""
 
 				if strings.LastIndexByte(href, '?') != -1 {
-					goto nextToken
+					continue
 				}
 
 				switch href {
 				case "", " ", ".", "..", "/":
-					goto nextToken
+					continue
 				}
 
 				if strings.Contains(href, "../") {
-					goto nextToken
+					continue
 				}
 
 				var link fasturl.URL
@@ -108,8 +110,6 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 				links = append(links, link)
 			}
 		}
-
-	nextToken:
 	}
 
 	return
