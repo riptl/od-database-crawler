@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"time"
 )
 
 var serverClient = http.Client {
@@ -101,25 +102,38 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 
 		multi.Close()
 
-		req, err := http.NewRequest(
-			http.MethodPost,
-			config.ServerUrl + "/task/upload",
-			&b)
-		req.Header.Set("content-type", multi.FormDataContentType())
-		if err != nil { return err }
+		for retried := false; true; retried = true {
+			err = nil
+			if retried {
+				// Error occurred, retry upload
+				time.Sleep(5 * time.Second)
+			}
 
-		res, err := serverClient.Do(req)
-		if err != nil { return err }
-		res.Body.Close()
+			req, err := http.NewRequest(
+				http.MethodPost,
+				config.ServerUrl + "/task/upload",
+				&b)
+			req.Header.Set("content-type", multi.FormDataContentType())
+			if err != nil { continue }
 
-		if res.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to upload list part %d: %s",
-				iter, res.Status)
+			res, err := serverClient.Do(req)
+			if err != nil { continue }
+			res.Body.Close()
+
+			if res.StatusCode != http.StatusOK {
+				logrus.WithField("status", res.Status).
+					WithField("part", iter).
+					Errorf("Upload failed")
+				continue
+			}
+
+			// Upload successful
+			break
 		}
 
 		logrus.WithField("id", websiteId).
 			WithField("part", iter).
-			Infof("Uploading files chunk")
+			Infof("Uploaded files chunk")
 	}
 	return nil
 }
