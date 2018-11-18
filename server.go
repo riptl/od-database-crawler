@@ -90,7 +90,10 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 		if err != io.EOF && err != nil {
 			return err
 		}
-		if n < config.ChunkSize {
+		if n == 0 {
+			// Don't upload, no content
+			return nil
+		} else if n < config.ChunkSize {
 			err = nil
 			// Break at end of iteration
 			eof = true
