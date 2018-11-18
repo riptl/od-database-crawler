@@ -25,6 +25,9 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	f.Name = path.Base(j.Uri.Path)
 
 	req := fasthttp.AcquireRequest()
+	if config.UserAgent != "" {
+		req.Header.SetUserAgent(config.UserAgent)
+	}
 	req.SetRequestURI(j.UriStr)
 
 	res := fasthttp.AcquireResponse()
@@ -120,6 +123,9 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 
 	req := fasthttp.AcquireRequest()
 	req.Header.SetMethod("HEAD")
+	if config.UserAgent != "" {
+		req.Header.SetUserAgent(config.UserAgent)
+	}
 	req.SetRequestURI(u.String())
 
 	res := fasthttp.AcquireResponse()

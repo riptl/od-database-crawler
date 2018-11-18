@@ -47,3 +47,6 @@ crawl:
 
   # Time before discarding a network request
   timeout: 10s
+
+  # Crawler User-Agent
+  user-agent: "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0"
