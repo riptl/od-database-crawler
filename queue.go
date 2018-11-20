@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/beeker1121/goque"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -11,7 +12,6 @@ const (
 
 type BufferedQueue struct {
 	q *goque.Queue
-	inBuf []Job
 	outBuf []Job
 	m sync.Mutex
 }
@@ -24,6 +24,7 @@ func OpenQueue(dataDir string) (bq *BufferedQueue, err error) {
 }
 
 func (q *BufferedQueue) Enqueue(job *Job) error {
+	atomic.AddInt64(&totalQueued, 1)
 	if q.directEnqueue(job) {
 		return nil
 	}
@@ -36,12 +37,15 @@ func (q *BufferedQueue) Enqueue(job *Job) error {
 
 func (q *BufferedQueue) Dequeue() (job Job, err error) {
 	if q.directDequeue(&job) {
+		atomic.AddInt64(&totalQueued, -1)
 		return job, nil
 	}
 
 	var item *goque.Item
 	item, err = q.q.Dequeue()
 	if err != nil { return }
+
+	atomic.AddInt64(&totalQueued, -1)
 
 	var gob JobGob
 	err = item.ToObject(&gob)

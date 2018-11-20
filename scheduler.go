@@ -16,7 +16,7 @@ import (
 var activeTasksLock sync.Mutex
 var activeTasks = make(map[uint64]bool)
 var numActiveTasks int32
-var totalBuffered int64
+var totalQueued int64
 
 func Schedule(c context.Context, remotes <-chan *OD) {
 	go Stats(c)
