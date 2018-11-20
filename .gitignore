@@ -1,3 +1,6 @@
 /.idea/
 .DS_Store
 /od-database-crawler
+*.log
+/queue/
+/crawled/
