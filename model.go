@@ -23,11 +23,34 @@ type TaskResult struct {
 }
 
 type Job struct {
-	OD        *OD
 	Uri       fasturl.URL
 	UriStr    string
 	Fails     int
 	LastError error
+}
+
+type JobGob struct {
+	Uri string
+	Fails int
+	LastError string
+}
+
+func (g *JobGob) ToGob(j *Job) {
+	g.Uri = j.UriStr
+	g.Fails = j.Fails
+	if j.LastError != nil {
+		g.LastError = j.LastError.Error()
+	}
+}
+
+func (g *JobGob) FromGob(j *Job) {
+	if err := j.Uri.Parse(g.Uri);
+		err != nil { panic(err) }
+	j.UriStr = g.Uri
+	j.Fails = g.Fails
+	if g.LastError != "" {
+		j.LastError = errorString(g.LastError)
+	}
 }
 
 type OD struct {
@@ -56,4 +79,9 @@ func (o *OD) LoadOrStoreKey(k *redblackhash.Key) (exists bool) {
 
 	o.Scanned.Put(k)
 	return false
+}
+
+type errorString string
+func (e errorString) Error() string {
+	return string(e)
 }

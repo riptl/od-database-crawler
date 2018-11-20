@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/beeker1121/goque"
 	"github.com/sirupsen/logrus"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"os"
@@ -28,8 +29,23 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		// Collect results
 		results := make(chan File)
 
+		remote.WCtx.OD = remote
+
+		// Get queue path
+		queuePath := path.Join("queue", fmt.Sprintf("%d", remote.Task.WebsiteId))
+
+		// Delete existing queue
+		if err := os.RemoveAll(queuePath);
+			err != nil { panic(err) }
+
+		// Start new queue
+		var err error
+		remote.WCtx.Queue, err = goque.OpenQueue(queuePath)
+		if err != nil {
+			panic(err)
+		}
+
 		// Spawn workers
-		remote.WCtx.in, remote.WCtx.out = makeJobBuffer(c)
 		for i := 0; i < config.Workers; i++ {
 			go remote.WCtx.Worker(results)
 		}
@@ -37,7 +53,6 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		// Enqueue initial job
 		atomic.AddInt32(&numActiveTasks, 1)
 		remote.WCtx.queueJob(Job{
-			OD:     remote,
 			Uri:    remote.BaseUri,
 			UriStr: remote.BaseUri.String(),
 			Fails:  0,
@@ -148,7 +163,9 @@ func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error
 
 	// Wait for all jobs on remote to finish
 	o.Wait.Wait()
-	close(o.WCtx.in)
+	if err := o.WCtx.Queue.Close(); err != nil {
+		panic(err)
+	}
 	atomic.AddInt32(&numActiveTasks, -1)
 
 	// Log finish
@@ -197,52 +214,4 @@ func (t *Task) collect(results chan File, f *os.File) error {
 	}
 
 	return nil
-}
-
-func makeJobBuffer(c context.Context) (chan<- Job, <-chan Job) {
-	in  := make(chan Job)
-	out := make(chan Job)
-	go bufferJobs(c, in, out)
-	return in, out
-}
-
-func bufferJobs(c context.Context, in chan Job, out chan Job) {
-	defer close(out)
-	var inQueue []Job
-	outCh := func() chan Job {
-		if len(inQueue) == 0 {
-			return nil
-		}
-		return out
-	}
-	for len(inQueue) > 0 || in != nil {
-		if len(inQueue) == 0 {
-			select {
-			case v, ok := <-in:
-				if !ok {
-					in = nil
-				} else {
-					atomic.AddInt64(&totalBuffered, 1)
-					inQueue = append(inQueue, v)
-				}
-			case <-c.Done():
-				return
-			}
-		} else {
-			select {
-			case v, ok := <-in:
-				if !ok {
-					in = nil
-				} else {
-					atomic.AddInt64(&totalBuffered, 1)
-					inQueue = append(inQueue, v)
-				}
-			case outCh() <- inQueue[0]:
-				atomic.AddInt64(&totalBuffered, -1)
-				inQueue = inQueue[1:]
-			case <-c.Done():
-				return
-			}
-		}
-	}
 }

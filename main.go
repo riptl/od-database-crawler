@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"github.com/urfave/cli"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"time"
 )
 
+var configFile string
+
 var app = cli.App {
 	Name:         "od-database-crawler",
 	Usage:        "OD-Database Go crawler",
@@ -18,13 +21,26 @@ var app = cli.App {
 	BashComplete: cli.DefaultAppComplete,
 	Writer:       os.Stdout,
 	Action:       cmdBase,
-	Commands:     []cli.Command{
+	Commands:     []cli.Command {
 		{
 			Name:      "crawl",
 			Usage:     "Crawl a list of URLs",
 			ArgsUsage: "<site>",
 			Action:    cmdCrawler,
 		},
+	},
+	Flags: []cli.Flag {
+		cli.StringFlag {
+			Name: "config",
+			EnvVar: "CONFIG",
+			Destination: &configFile,
+		},
+	},
+	Before: func(i *cli.Context) error {
+		if configFile != "" {
+			viper.SetConfigFile(configFile)
+		}
+		return nil
 	},
 	After: func(i *cli.Context) error {
 		exitHooks.Execute()
@@ -39,10 +55,11 @@ func init() {
 }
 
 func main() {
-	err := os.MkdirAll("crawled", 0755)
-	if err != nil {
-		panic(err)
-	}
+	if err := os.MkdirAll("crawled", 0755);
+		err != nil { panic(err) }
+
+	if err := os.MkdirAll("queue", 0755);
+		err != nil { panic(err) }
 
 	readConfig()
 	app.Run(os.Args)
