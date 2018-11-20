@@ -52,9 +52,17 @@ crawl:
   # from the site before giving up
   retries: 5
 
+  # Time before discarding a failed connection attempt
+  dial_timeout: 10s
+
   # Time before discarding a network request
-  timeout: 10s
+  timeout: 30s
 
   # Crawler User-Agent
   # If empty, no User-Agent header is sent.
   user-agent: "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0"
+
+  # Job buffer size (per task)
+  # Higher values cause less disk writes
+  # but require more memory.
+  job_buffer: 5000

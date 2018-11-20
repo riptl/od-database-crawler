@@ -8,6 +8,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/net/html"
+	"net"
 	"path"
 	"strconv"
 	"strings"
@@ -18,6 +19,17 @@ var client = fasthttp.Client {
 	TLSConfig: &tls.Config{
 		InsecureSkipVerify: true,
 	},
+}
+
+func setDialTimeout(d time.Duration) {
+	client.Dial = func(addr string) (net.Conn, error) {
+		return fasthttp.DialTimeout(addr, d)
+	}
+}
+
+func setTimeout(d time.Duration) {
+	client.ReadTimeout = d
+	client.WriteTimeout = d / 2
 }
 
 func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
@@ -33,7 +45,7 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.DoTimeout(req, res, config.Timeout)
+	err = client.Do(req, res)
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil {
@@ -132,7 +144,7 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 	res.SkipBody = true
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.DoTimeout(req, res, config.Timeout)
+	err = client.Do(req, res)
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil {
