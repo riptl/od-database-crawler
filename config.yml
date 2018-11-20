@@ -46,7 +46,7 @@ crawl:
   # Please be careful with this setting!
   # The crawler fires fast and more than
   # ten connections can overwhelm a server.
-  connections: 10
+  connections: 4
 
   # How often to retry getting data
   # from the site before giving up
@@ -65,4 +65,13 @@ crawl:
   # Job buffer size (per task)
   # Higher values cause less disk writes
   # but require more memory.
+  #
+  # The job queue contains all URLs
+  # that should be crawled next.
+  # As it grows very large over time,
+  # it's kept mainly on disk.
+  # This sets how many jobs are kept
+  # in memory.
+  # A negative value will cause all jobs
+  # to be stored in memory. (Don't do this)
   job_buffer: 5000

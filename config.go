@@ -25,6 +25,7 @@ var config struct {
 	AllocStats time.Duration
 	Verbose    bool
 	PrintHTTP  bool
+	JobBufferSize int
 }
 
 const (
@@ -39,6 +40,7 @@ const (
 	ConfUserAgent  = "crawl.user-agent"
 	ConfDialTimeout = "crawl.dial_timeout"
 	ConfTimeout    = "crawl.timeout"
+	ConfJobBufferSize = "crawl.job_buffer"
 	ConfCrawlStats = "output.crawl_stats"
 	ConfAllocStats = "output.resource_stats"
 	ConfVerbose    = "output.verbose"
@@ -53,6 +55,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfUserAgent, "")
 	viper.SetDefault(ConfDialTimeout, 10 * time.Second)
 	viper.SetDefault(ConfTimeout, 30 * time.Second)
+	viper.SetDefault(ConfJobBufferSize, 5000)
 	viper.SetDefault(ConfCrawlStats, 3 * time.Second)
 	viper.SetDefault(ConfAllocStats, 0)
 	viper.SetDefault(ConfVerbose, false)
@@ -111,6 +114,8 @@ func readConfig() {
 	setDialTimeout(viper.GetDuration(ConfDialTimeout))
 
 	setTimeout(viper.GetDuration(ConfTimeout))
+
+	config.JobBufferSize = viper.GetInt(ConfJobBufferSize)
 
 	config.CrawlStats = viper.GetDuration(ConfCrawlStats)
 

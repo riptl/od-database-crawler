@@ -7,10 +7,6 @@ import (
 	"sync/atomic"
 )
 
-const (
-	threshold = 5000
-)
-
 type BufferedQueue struct {
 	dataDir string
 	q       *goque.Queue
@@ -20,6 +16,9 @@ type BufferedQueue struct {
 
 func OpenQueue(dataDir string) (bq *BufferedQueue, err error) {
 	bq = new(BufferedQueue)
+	if config.JobBufferSize < 0 {
+		return
+	}
 	bq.dataDir = dataDir
 	bq.q, err = goque.OpenQueue(dataDir)
 	if err != nil { return nil, err }
@@ -44,6 +43,11 @@ func (q *BufferedQueue) Dequeue() (job Job, err error) {
 		return job, nil
 	}
 
+	if config.JobBufferSize < 0 {
+		err = goque.ErrEmpty
+		return
+	}
+
 	var item *goque.Item
 	item, err = q.q.Dequeue()
 	if err != nil { return }
@@ -62,7 +66,8 @@ func (q *BufferedQueue) directEnqueue(job *Job) bool {
 	q.m.Lock()
 	defer q.m.Unlock()
 
-	if len(q.buf) < threshold {
+	bs := config.JobBufferSize
+	if len(q.buf) < bs || bs < 0 {
 		q.buf = append(q.buf, *job)
 		return true
 	} else {
@@ -85,6 +90,10 @@ func (q *BufferedQueue) directDequeue(job *Job) bool {
 
 // Always returns nil (But implements io.Closer)
 func (q *BufferedQueue) Close() error {
+	if config.JobBufferSize < 0 {
+		return nil
+	}
+
 	// Close ignoring errors
 	q.q.Close()
 
