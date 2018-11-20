@@ -29,30 +29,6 @@ type Job struct {
 	LastError error
 }
 
-type JobGob struct {
-	Uri string
-	Fails int
-	LastError string
-}
-
-func (g *JobGob) ToGob(j *Job) {
-	g.Uri = j.UriStr
-	g.Fails = j.Fails
-	if j.LastError != nil {
-		g.LastError = j.LastError.Error()
-	}
-}
-
-func (g *JobGob) FromGob(j *Job) {
-	if err := j.Uri.Parse(g.Uri);
-		err != nil { panic(err) }
-	j.UriStr = g.Uri
-	j.Fails = g.Fails
-	if g.LastError != "" {
-		j.LastError = errorString(g.LastError)
-	}
-}
-
 type OD struct {
 	Task    Task
 	Result  TaskResult

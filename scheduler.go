@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/beeker1121/goque"
 	"github.com/sirupsen/logrus"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"os"
@@ -40,10 +39,8 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 
 		// Start new queue
 		var err error
-		remote.WCtx.Queue, err = goque.OpenQueue(queuePath)
-		if err != nil {
-			panic(err)
-		}
+		remote.WCtx.Queue, err = OpenQueue(queuePath)
+		if err != nil { panic(err) }
 
 		// Spawn workers
 		for i := 0; i < config.Workers; i++ {

@@ -16,14 +16,14 @@ var globalWait sync.WaitGroup
 
 type WorkerContext struct {
 	OD *OD
-	Queue *goque.Queue
+	Queue *BufferedQueue
 	lastRateLimit time.Time
 	numRateLimits int
 }
 
 func (w *WorkerContext) Worker(results chan<- File) {
 	for {
-		item, err := w.Queue.Dequeue()
+		job, err := w.Queue.Dequeue()
 		switch err {
 		case goque.ErrEmpty:
 			time.Sleep(500 * time.Millisecond)
@@ -33,20 +33,11 @@ func (w *WorkerContext) Worker(results chan<- File) {
 			return
 
 		case nil:
-			break
+			w.step(results, job)
 
 		default:
 			panic(err)
 		}
-
-		var gob JobGob
-		if err := item.ToObject(&gob); err != nil {
-			panic(err)
-		}
-
-		var job Job
-		gob.FromGob(&job)
-		w.step(results, job)
 	}
 }
 
@@ -179,9 +170,7 @@ func (w *WorkerContext) queueJob(job Job) {
 		}
 	}
 
-	var gob JobGob
-	gob.ToGob(&job)
-	if _, err := w.Queue.EnqueueObject(gob); err != nil {
+	if err := w.Queue.Enqueue(&job); err != nil {
 		panic(err)
 	}
 }
