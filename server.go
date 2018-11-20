@@ -105,7 +105,7 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 		for retries := 0; retries < 10; retries++ {
 			if retries > 0 {
 				// Error occurred, retry upload
-				time.Sleep(5 * time.Second)
+				time.Sleep(30 * time.Second)
 			}
 
 			req, err := http.NewRequest(
