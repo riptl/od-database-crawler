@@ -160,6 +160,8 @@ func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error
 
 	// Wait for all jobs on remote to finish
 	o.Wait.Wait()
+
+	// Close queue
 	if err := o.WCtx.Queue.Close(); err != nil {
 		panic(err)
 	}
