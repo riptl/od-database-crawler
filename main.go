@@ -17,7 +17,7 @@ var configFile string
 var app = cli.App {
 	Name:         "od-database-crawler",
 	Usage:        "OD-Database Go crawler",
-	Version:      "1.1.0",
+	Version:      "1.1.1",
 	BashComplete: cli.DefaultAppComplete,
 	Writer:       os.Stdout,
 	Action:       cmdBase,
