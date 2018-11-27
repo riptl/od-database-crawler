@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -102,10 +103,10 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 
 		multi.Close()
 
-		for retries := 0; retries < 10; retries++ {
+		for retries := 0; retries < viper.GetInt(ConfUploadRetries); retries++ {
 			if retries > 0 {
 				// Error occurred, retry upload
-				time.Sleep(30 * time.Second)
+				time.Sleep(viper.GetDuration(ConfUploadRetryInterval))
 			}
 
 			req, err := http.NewRequest(

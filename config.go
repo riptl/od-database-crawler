@@ -33,7 +33,11 @@ const (
 	ConfToken      = "server.token"
 	ConfServerTimeout = "server.timeout"
 	ConfRecheck    = "server.recheck"
+	ConfCooldown   = "server.cooldown"
 	ConfChunkSize  = "server.upload_chunk"
+	ConfUploadRetries = "server.upload_retries"
+	ConfUploadRetryInterval = "server.upload_retry_interval"
+
 	ConfTasks      = "crawl.tasks"
 	ConfRetries    = "crawl.retries"
 	ConfWorkers    = "crawl.connections"
@@ -41,6 +45,7 @@ const (
 	ConfDialTimeout = "crawl.dial_timeout"
 	ConfTimeout    = "crawl.timeout"
 	ConfJobBufferSize = "crawl.job_buffer"
+
 	ConfCrawlStats = "output.crawl_stats"
 	ConfAllocStats = "output.resource_stats"
 	ConfVerbose    = "output.verbose"
@@ -54,7 +59,7 @@ func prepareConfig() {
 	viper.SetDefault(ConfTasks, 3)
 	viper.SetDefault(ConfUserAgent, "")
 	viper.SetDefault(ConfDialTimeout, 10 * time.Second)
-	viper.SetDefault(ConfTimeout, 30 * time.Second)
+	viper.SetDefault(ConfTimeout, 60 * time.Second)
 	viper.SetDefault(ConfJobBufferSize, 5000)
 	viper.SetDefault(ConfCrawlStats, 3 * time.Second)
 	viper.SetDefault(ConfAllocStats, 0)
@@ -62,7 +67,10 @@ func prepareConfig() {
 	viper.SetDefault(ConfPrintHTTP, false)
 	viper.SetDefault(ConfLogFile, "")
 	viper.SetDefault(ConfRecheck, 3 * time.Second)
+	viper.SetDefault(ConfCooldown, 30 * time.Second)
 	viper.SetDefault(ConfChunkSize, "1 MB")
+	viper.SetDefault(ConfUploadRetries, 10)
+	viper.SetDefault(ConfUploadRetryInterval, 30 * time.Second)
 }
 
 func readConfig() {

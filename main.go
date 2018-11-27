@@ -84,7 +84,7 @@ func cmdBase(_ *cli.Context) error {
 			if err != nil {
 				logrus.WithError(err).
 					Error("Failed to get new task")
-				time.Sleep(30 * time.Second)
+				time.Sleep(viper.GetDuration(ConfCooldown))
 				continue
 			}
 			if t == nil {
@@ -111,7 +111,7 @@ func cmdBase(_ *cli.Context) error {
 			} else if err != nil {
 				logrus.WithError(err).
 					Error("Failed to get new task")
-				time.Sleep(30 * time.Second)
+				time.Sleep(viper.GetDuration(ConfCooldown))
 				continue
 			}
 			ScheduleTask(inRemotes, t, &baseUri)

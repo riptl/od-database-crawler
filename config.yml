@@ -15,9 +15,16 @@ server:
   # between /task/get requests to the server.
   recheck: 1s
 
+  # Time to wait after receiving an error
+  # from the server. Doesn't apply to uploads.
+  cooldown: 30s
+
   # Upload chunk size
   # If the value is too high, the upload fails.
   upload_chunk: 1 MB
+
+  upload_retries: 10
+  upload_retry_interval: 30s
 
 # Log output settings
 output:
