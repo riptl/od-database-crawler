@@ -58,6 +58,10 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	}
 
 	body := res.Body()
+	return ParseDir(body, &j.Uri)
+}
+
+func ParseDir(body []byte, baseUri *fasturl.URL) (links []fasturl.URL, err error) {
 	doc := html.NewTokenizer(bytes.NewReader(body))
 
 	var linkHref string
@@ -107,15 +111,15 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 				}
 
 				var link fasturl.URL
-				err = j.Uri.ParseRel(&link, href)
+				err = baseUri.ParseRel(&link, href)
 				if err != nil {
 					continue
 				}
 
-				if link.Scheme != j.Uri.Scheme ||
-					link.Host != j.Uri.Host ||
-					link.Path == j.Uri.Path ||
-					!strings.HasPrefix(link.Path, j.Uri.Path) {
+				if link.Scheme != baseUri.Scheme ||
+					link.Host != baseUri.Host ||
+					link.Path == baseUri.Path ||
+					!strings.HasPrefix(link.Path, baseUri.Path) {
 					continue
 				}
 
