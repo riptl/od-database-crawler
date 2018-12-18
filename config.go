@@ -21,8 +21,6 @@ var config struct {
 	Workers    int
 	UserAgent  string
 	Tasks      int32
-	CrawlStats time.Duration
-	AllocStats time.Duration
 	Verbose    bool
 	PrintHTTP  bool
 	JobBufferSize int
@@ -124,10 +122,6 @@ func readConfig() {
 	setTimeout(viper.GetDuration(ConfTimeout))
 
 	config.JobBufferSize = viper.GetInt(ConfJobBufferSize)
-
-	config.CrawlStats = viper.GetDuration(ConfCrawlStats)
-
-	config.AllocStats = viper.GetDuration(ConfAllocStats)
 
 	config.Verbose = viper.GetBool(ConfVerbose)
 	if config.Verbose {

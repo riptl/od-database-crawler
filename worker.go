@@ -42,7 +42,7 @@ func (w *WorkerContext) Worker(results chan<- File) {
 }
 
 func (w *WorkerContext) step(results chan<- File, job Job) {
-	defer w.finishJob(&job)
+	defer w.finishJob()
 
 	var f File
 
@@ -175,7 +175,7 @@ func (w *WorkerContext) queueJob(job Job) {
 	}
 }
 
-func (w *WorkerContext) finishJob(job *Job) {
+func (w *WorkerContext) finishJob() {
 	w.OD.Wait.Done()
 }
 

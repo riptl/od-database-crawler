@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"math"
 	"runtime"
 	"sync/atomic"
@@ -19,11 +20,14 @@ func Stats(c context.Context) {
 	var crawlTicker <-chan time.Time
 	var allocTicker <-chan time.Time
 
-	if config.CrawlStats != 0 {
-		crawlTicker = time.NewTicker(config.CrawlStats).C
+	crawlInterval := viper.GetDuration(ConfCrawlStats)
+	allocInterval := viper.GetDuration(ConfAllocStats)
+
+	if crawlInterval != 0 {
+		crawlTicker = time.Tick(crawlInterval)
 	}
-	if config.AllocStats != 0 {
-		allocTicker = time.NewTicker(config.AllocStats).C
+	if allocInterval != 0 {
+		allocTicker = time.Tick(allocInterval)
 	}
 
 	for {
@@ -32,7 +36,7 @@ func Stats(c context.Context) {
 			startedNow := atomic.LoadUint64(&totalStarted)
 
 			perSecond := float64(startedNow - startedLast) /
-				config.CrawlStats.Seconds()
+				crawlInterval.Seconds()
 
 			// Round to .5
 			perSecond *= 2
