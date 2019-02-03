@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"github.com/beeker1121/goque"
@@ -193,13 +194,18 @@ func writePauseFile(od *OD, w io.Writer) (err error) {
 		InProgress: atomic.LoadInt64(&od.InProgress),
 	}
 
-	// Write pause settings
-	pauseEnc := gob.NewEncoder(w)
+	// Prepare pause settings
+	var b bytes.Buffer
+	pauseEnc := gob.NewEncoder(&b)
 	err = pauseEnc.Encode(&paused)
 	if err != nil { return err }
 
-	// Save mark
-	_, err = w.Write([]byte("--------"))
+	// Write length of pause settings
+	err = binary.Write(w, binary.LittleEndian, uint64(b.Len()))
+	if err != nil { return err }
+
+	// Write pause settings
+	_, err = w.Write(b.Bytes())
 	if err != nil { return err }
 
 	// Write pause scan state
@@ -229,8 +235,12 @@ func readPauseFile(od *OD, r io.Reader) (err error) {
 		return fmt.Errorf("unsupported pause file")
 	}
 
+	// Read pause settings len
+	var pauseSettingsLen uint64
+	err = binary.Read(r, binary.LittleEndian, &pauseSettingsLen)
+
 	// Read pause settings
-	pauseDec := gob.NewDecoder(r)
+	pauseDec := gob.NewDecoder(io.LimitReader(r, int64(pauseSettingsLen)))
 	err = pauseDec.Decode(&paused)
 	if err != nil { return err }
 	atomic.StoreInt64(&od.InProgress, paused.InProgress)
