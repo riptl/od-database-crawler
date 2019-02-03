@@ -61,8 +61,6 @@ func preRun(cmd *cobra.Command, args []string) error {
 	if err := os.MkdirAll("queue", 0755);
 		err != nil { panic(err) }
 
-	readConfig()
-
 	return nil
 }
 
@@ -75,11 +73,15 @@ func main() {
 }
 
 func cmdBase(_ *cobra.Command, _ []string) {
+	onlineMode = true
+	readConfig()
+
 	// TODO Graceful shutdown
 	appCtx := context.Background()
 	forceCtx := context.Background()
 
 	inRemotes := make(chan *OD)
+	go LoadResumeTasks(inRemotes)
 	go Schedule(forceCtx, inRemotes)
 
 	ticker := time.NewTicker(config.Recheck)
@@ -129,6 +131,9 @@ func cmdBase(_ *cobra.Command, _ []string) {
 }
 
 func cmdCrawler(_ *cobra.Command, args []string) error {
+	onlineMode = false
+	readConfig()
+
 	arg := args[0]
 	// https://github.com/golang/go/issues/19779
 	if !strings.Contains(arg, "://") {

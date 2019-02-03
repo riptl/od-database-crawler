@@ -38,6 +38,12 @@ type OD struct {
 	Scanned redblackhash.Tree
 }
 
+type PausedOD struct {
+	Task    *Task
+	Result  *TaskResult
+	BaseUri *fasturl.URL
+}
+
 type File struct {
 	Name  string `json:"name"`
 	Size  int64  `json:"size"`

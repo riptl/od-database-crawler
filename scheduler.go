@@ -22,52 +22,60 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 	go Stats(c)
 
 	for remote := range remotes {
-		logrus.WithField("url", remote.BaseUri.String()).
-			Info("Starting crawler")
-
-		// Collect results
-		results := make(chan File)
-
-		remote.WCtx.OD = remote
-
-		// Get queue path
-		queuePath := path.Join("queue", fmt.Sprintf("%d", remote.Task.WebsiteId))
-
-		// Delete existing queue
-		if err := os.RemoveAll(queuePath);
-			err != nil { panic(err) }
-
-		// Start new queue
-		var err error
-		remote.WCtx.Queue, err = OpenQueue(queuePath)
-		if err != nil { panic(err) }
-
-		// Spawn workers
-		for i := 0; i < config.Workers; i++ {
-			go remote.WCtx.Worker(results)
-		}
-
-		// Enqueue initial job
-		atomic.AddInt32(&numActiveTasks, 1)
-		remote.WCtx.queueJob(Job{
-			Uri:    remote.BaseUri,
-			UriStr: remote.BaseUri.String(),
-			Fails:  0,
-		})
-
-		// Upload result when ready
-		go remote.Watch(results)
-
-		// Sleep if max number of tasks are active
-		for atomic.LoadInt32(&numActiveTasks) > config.Tasks {
-			select {
-			case <-c.Done():
-				return
-			case <-time.After(time.Second):
-				continue
-			}
+		if !scheduleNewTask(c, remote) {
+			return
 		}
 	}
+}
+
+func scheduleNewTask(c context.Context, remote *OD) bool {
+	logrus.WithField("url", remote.BaseUri.String()).
+		Info("Starting crawler")
+
+	// Collect results
+	results := make(chan File)
+
+	remote.WCtx.OD = remote
+
+	// Get queue path
+	queuePath := path.Join("queue", fmt.Sprintf("%d", remote.Task.WebsiteId))
+
+	// Delete existing queue
+	if err := os.RemoveAll(queuePath);
+		err != nil { panic(err) }
+
+	// Start new queue
+	var err error
+	remote.WCtx.Queue, err = OpenQueue(queuePath)
+	if err != nil { panic(err) }
+
+	// Spawn workers
+	for i := 0; i < config.Workers; i++ {
+		go remote.WCtx.Worker(results)
+	}
+
+	// Enqueue initial job
+	atomic.AddInt32(&numActiveTasks, 1)
+	remote.WCtx.queueJob(Job{
+		Uri:    remote.BaseUri,
+		UriStr: remote.BaseUri.String(),
+		Fails:  0,
+	})
+
+	// Upload result when ready
+	go remote.Watch(results)
+
+	// Sleep if max number of tasks are active
+	for atomic.LoadInt32(&numActiveTasks) > config.Tasks {
+		select {
+		case <-c.Done():
+			return false
+		case <-time.After(time.Second):
+			return true
+		}
+	}
+
+	return true
 }
 
 func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
