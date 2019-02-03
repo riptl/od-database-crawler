@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -52,32 +53,103 @@ const (
 )
 
 func prepareConfig() {
-	viper.SetDefault(ConfRetries, 5)
-	viper.SetDefault(ConfWorkers, 2)
-	viper.SetDefault(ConfTasks, 3)
-	viper.SetDefault(ConfUserAgent, "")
-	viper.SetDefault(ConfDialTimeout, 10 * time.Second)
-	viper.SetDefault(ConfTimeout, 60 * time.Second)
-	viper.SetDefault(ConfJobBufferSize, 5000)
-	viper.SetDefault(ConfCrawlStats, 3 * time.Second)
-	viper.SetDefault(ConfAllocStats, 0)
-	viper.SetDefault(ConfVerbose, false)
-	viper.SetDefault(ConfPrintHTTP, false)
-	viper.SetDefault(ConfLogFile, "")
-	viper.SetDefault(ConfRecheck, 3 * time.Second)
-	viper.SetDefault(ConfCooldown, 30 * time.Second)
-	viper.SetDefault(ConfChunkSize, "1 MB")
-	viper.SetDefault(ConfUploadRetries, 10)
-	viper.SetDefault(ConfUploadRetryInterval, 30 * time.Second)
+	pf := rootCmd.PersistentFlags()
+
+	bind := func(s string) {
+		if err := viper.BindPFlag(s, pf.Lookup(s)); err != nil {
+			panic(err)
+		}
+		var envKey string
+		envKey = strings.Replace(s, ".", "_", -1)
+		envKey = strings.ToUpper(envKey)
+		envKey = "OD_" + envKey
+		if err := viper.BindEnv(s, envKey); err != nil {
+			panic(err)
+		}
+	}
+
+	pf.SortFlags = false
+	pf.StringVar(&configFile, "config", "", "Config file")
+	configFile = os.Getenv("OD_CONFIG")
+
+	pf.String(ConfServerUrl, "http://od-db.the-eye.eu/api", "OD-DB server URL")
+	bind(ConfServerUrl)
+
+	pf.String(ConfToken, "", "OD-DB access token (env OD_SERVER_TOKEN)")
+	bind(ConfToken)
+
+	pf.Duration(ConfServerTimeout, 60 * time.Second, "OD-DB request timeout")
+	bind(ConfServerTimeout)
+
+	pf.Duration(ConfRecheck, 1 * time.Second, "OD-DB: Poll interval for new jobs")
+	bind(ConfRecheck)
+
+	pf.Duration(ConfCooldown, 30 * time.Second, "OD-DB: Time to wait after a server-side error")
+	bind(ConfCooldown)
+
+	pf.String(ConfChunkSize, "1 MB", "OD-DB: Result upload chunk size")
+	bind(ConfChunkSize)
+
+	pf.Uint(ConfUploadRetries, 10, "OD-DB: Max upload retries")
+	bind(ConfUploadRetries)
+
+	pf.Duration(ConfUploadRetryInterval, 30 * time.Second, "OD-DB: Time to wait between upload retries")
+	bind(ConfUploadRetryInterval)
+
+	pf.Uint(ConfTasks, 100, "Crawler: Max concurrent tasks")
+	bind(ConfTasks)
+
+	pf.Uint(ConfWorkers, 4, "Crawler: Connections per server")
+	bind(ConfWorkers)
+
+	pf.Uint(ConfRetries, 5, "Crawler: Request retries")
+	bind(ConfRetries)
+
+	pf.Duration(ConfDialTimeout, 10 * time.Second, "Crawler: Handshake timeout")
+	bind(ConfDialTimeout)
+
+	pf.Duration(ConfTimeout, 30 * time.Second, "Crawler: Request timeout")
+	bind(ConfTimeout)
+
+	pf.String(ConfUserAgent, "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0", "Crawler: User-Agent")
+	bind(ConfUserAgent)
+
+	pf.Uint(ConfJobBufferSize, 5000, "Crawler: Task queue cache size")
+	bind(ConfJobBufferSize)
+
+	pf.Duration(ConfCrawlStats, time.Second, "Log: Crawl stats interval")
+	bind(ConfCrawlStats)
+
+	pf.Duration(ConfAllocStats, 10 * time.Second, "Log: Resource stats interval")
+	bind(ConfAllocStats)
+
+	pf.Bool(ConfVerbose, false, "Log: Print every listed dir")
+	bind(ConfVerbose)
+
+	pf.Bool(ConfPrintHTTP, false, "Log: Print HTTP client errors")
+	bind(ConfPrintHTTP)
+
+	pf.String(ConfLogFile, "crawler.log", "Log file")
+	bind(ConfLogFile)
 }
 
 func readConfig() {
-	viper.AddConfigPath(".")
-	viper.SetConfigName("config")
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	// If config.yml in working dir, use it
+	if _, err := os.Stat("config.yml"); err == nil {
+		configFile = "config.yml"
+	}
+
+	if configFile != "" {
+		var err error
+		confPath, err := filepath.Abs(configFile)
+		if err != nil { panic(err) }
+
+		viper.SetConfigFile(confPath)
+		err = viper.ReadInConfig()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 
 	config.ServerUrl = viper.GetString(ConfServerUrl)

@@ -4,7 +4,6 @@ const helpText =
 `HTTP crawler for the OD-Database
   DB      >> https://od-db.the-eye.eu <<
   Crawler >> https://github.com/terorie/od-database-crawler <<
-  Config  >> https://bit.ly/2MOAsUp
   Server  >> https://github.com/simon987/od-database <<
 
 Quick start:

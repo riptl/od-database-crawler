@@ -51,8 +51,6 @@ func init() {
 	rootCmd.AddCommand(&crawlCmd)
 	rootCmd.AddCommand(&serverCmd)
 
-	pf := rootCmd.PersistentFlags()
-	pf.StringVar(&configFile, "config", "", "Config file")
 	prepareConfig()
 }
 
@@ -65,9 +63,6 @@ func preRun(cmd *cobra.Command, args []string) error {
 
 	readConfig()
 
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
-	}
 	return nil
 }
 
