@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"io"
 	"os"
@@ -26,6 +27,8 @@ var config struct {
 	JobBufferSize int
 }
 
+var onlineMode bool
+
 const (
 	ConfServerUrl  = "server.url"
 	ConfToken      = "server.token"
@@ -43,6 +46,7 @@ const (
 	ConfDialTimeout = "crawl.dial_timeout"
 	ConfTimeout    = "crawl.timeout"
 	ConfJobBufferSize = "crawl.job_buffer"
+	ConfResume     = "crawl.resume"
 
 	ConfCrawlStats = "output.crawl_stats"
 	ConfAllocStats = "output.resource_stats"
@@ -54,8 +58,58 @@ const (
 func prepareConfig() {
 	pf := rootCmd.PersistentFlags()
 
-	bind := func(s string) {
-		if err := viper.BindPFlag(s, pf.Lookup(s)); err != nil {
+	pf.SortFlags = false
+	pf.StringVar(&configFile, "config", "", "Config file")
+	configFile = os.Getenv("OD_CONFIG")
+
+	pf.String(ConfServerUrl, "http://od-db.the-eye.eu/api", "OD-DB server URL")
+
+	pf.String(ConfToken, "", "OD-DB access token (env OD_SERVER_TOKEN)")
+
+	pf.Duration(ConfServerTimeout, 60 * time.Second, "OD-DB request timeout")
+
+	pf.Duration(ConfRecheck, 1 * time.Second, "OD-DB: Poll interval for new jobs")
+
+	pf.Duration(ConfCooldown, 30 * time.Second, "OD-DB: Time to wait after a server-side error")
+
+	pf.String(ConfChunkSize, "1 MB", "OD-DB: Result upload chunk size")
+
+	pf.Uint(ConfUploadRetries, 10, "OD-DB: Max upload retries")
+
+	pf.Duration(ConfUploadRetryInterval, 30 * time.Second, "OD-DB: Time to wait between upload retries")
+
+	pf.Uint(ConfTasks, 100, "Crawler: Max concurrent tasks")
+
+	pf.Uint(ConfWorkers, 4, "Crawler: Connections per server")
+
+	pf.Uint(ConfRetries, 5, "Crawler: Request retries")
+
+	pf.Duration(ConfDialTimeout, 10 * time.Second, "Crawler: Handshake timeout")
+
+	pf.Duration(ConfTimeout, 30 * time.Second, "Crawler: Request timeout")
+
+	pf.String(ConfUserAgent, "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0", "Crawler: User-Agent")
+
+	pf.Uint(ConfJobBufferSize, 5000, "Crawler: Task queue cache size")
+
+	pf.Duration(ConfResume, 72 * time.Hour, "Crawler: Resume tasks not older than x")
+
+	pf.Duration(ConfCrawlStats, time.Second, "Log: Crawl stats interval")
+
+	pf.Duration(ConfAllocStats, 10 * time.Second, "Log: Resource stats interval")
+
+	pf.Bool(ConfVerbose, false, "Log: Print every listed dir")
+
+	pf.Bool(ConfPrintHTTP, false, "Log: Print HTTP client errors")
+
+	pf.String(ConfLogFile, "crawler.log", "Log file")
+
+	// Bind all flags to Viper
+	pf.VisitAll(func(flag *pflag.Flag) {
+		s := flag.Name
+		s = strings.TrimLeft(s, "-")
+
+		if err := viper.BindPFlag(s, flag); err != nil {
 			panic(err)
 		}
 		var envKey string
@@ -65,71 +119,7 @@ func prepareConfig() {
 		if err := viper.BindEnv(s, envKey); err != nil {
 			panic(err)
 		}
-	}
-
-	pf.SortFlags = false
-	pf.StringVar(&configFile, "config", "", "Config file")
-	configFile = os.Getenv("OD_CONFIG")
-
-	pf.String(ConfServerUrl, "http://od-db.the-eye.eu/api", "OD-DB server URL")
-	bind(ConfServerUrl)
-
-	pf.String(ConfToken, "", "OD-DB access token (env OD_SERVER_TOKEN)")
-	bind(ConfToken)
-
-	pf.Duration(ConfServerTimeout, 60 * time.Second, "OD-DB request timeout")
-	bind(ConfServerTimeout)
-
-	pf.Duration(ConfRecheck, 1 * time.Second, "OD-DB: Poll interval for new jobs")
-	bind(ConfRecheck)
-
-	pf.Duration(ConfCooldown, 30 * time.Second, "OD-DB: Time to wait after a server-side error")
-	bind(ConfCooldown)
-
-	pf.String(ConfChunkSize, "1 MB", "OD-DB: Result upload chunk size")
-	bind(ConfChunkSize)
-
-	pf.Uint(ConfUploadRetries, 10, "OD-DB: Max upload retries")
-	bind(ConfUploadRetries)
-
-	pf.Duration(ConfUploadRetryInterval, 30 * time.Second, "OD-DB: Time to wait between upload retries")
-	bind(ConfUploadRetryInterval)
-
-	pf.Uint(ConfTasks, 100, "Crawler: Max concurrent tasks")
-	bind(ConfTasks)
-
-	pf.Uint(ConfWorkers, 4, "Crawler: Connections per server")
-	bind(ConfWorkers)
-
-	pf.Uint(ConfRetries, 5, "Crawler: Request retries")
-	bind(ConfRetries)
-
-	pf.Duration(ConfDialTimeout, 10 * time.Second, "Crawler: Handshake timeout")
-	bind(ConfDialTimeout)
-
-	pf.Duration(ConfTimeout, 30 * time.Second, "Crawler: Request timeout")
-	bind(ConfTimeout)
-
-	pf.String(ConfUserAgent, "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0", "Crawler: User-Agent")
-	bind(ConfUserAgent)
-
-	pf.Uint(ConfJobBufferSize, 5000, "Crawler: Task queue cache size")
-	bind(ConfJobBufferSize)
-
-	pf.Duration(ConfCrawlStats, time.Second, "Log: Crawl stats interval")
-	bind(ConfCrawlStats)
-
-	pf.Duration(ConfAllocStats, 10 * time.Second, "Log: Resource stats interval")
-	bind(ConfAllocStats)
-
-	pf.Bool(ConfVerbose, false, "Log: Print every listed dir")
-	bind(ConfVerbose)
-
-	pf.Bool(ConfPrintHTTP, false, "Log: Print HTTP client errors")
-	bind(ConfPrintHTTP)
-
-	pf.String(ConfLogFile, "crawler.log", "Log file")
-	bind(ConfLogFile)
+	})
 }
 
 func readConfig() {
@@ -157,15 +147,17 @@ func readConfig() {
 		}
 	}
 
-	config.ServerUrl = viper.GetString(ConfServerUrl)
-	if config.ServerUrl == "" {
-		configMissing(ConfServerUrl)
-	}
-	config.ServerUrl = strings.TrimRight(config.ServerUrl, "/")
+	if onlineMode {
+		config.ServerUrl = viper.GetString(ConfServerUrl)
+		if config.ServerUrl == "" {
+			configMissing(ConfServerUrl)
+		}
+		config.ServerUrl = strings.TrimRight(config.ServerUrl, "/")
 
-	config.Token = viper.GetString(ConfToken)
-	if config.Token == "" {
-		configMissing(ConfToken)
+		config.Token = viper.GetString(ConfToken)
+		if config.Token == "" {
+			configMissing(ConfToken)
+		}
 	}
 
 	config.ServerTimeout = viper.GetDuration(ConfServerTimeout)
