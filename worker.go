@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/beeker1121/goque"
 	"github.com/sirupsen/logrus"
-	"github.com/valyala/fasthttp"
 	"math"
 	"sort"
 	"strings"
@@ -55,14 +54,12 @@ func (w *WorkerContext) step(results chan<- File, job Job) {
 	if err != nil {
 		job.Fails++
 
-		if httpErr, ok := err.(*HttpError); ok {
-			switch httpErr.code {
-			case fasthttp.StatusTooManyRequests:
-				err = ErrRateLimit
-			default:
-				// Don't retry HTTP error codes
-				return
-			}
+		if !shouldRetry(err) {
+			atomic.AddUint64(&totalAborted, 1)
+			logrus.WithField("url", job.UriStr).
+				WithError(err).
+				Error("Giving up after failure")
+			return
 		}
 
 		if job.Fails > config.Retries {
