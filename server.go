@@ -17,7 +17,10 @@ import (
 
 var serverClient = http.Client {
 	Timeout: config.ServerTimeout,
+	Transport: new(ServerTripper),
 }
+
+var serverUserAgent = "od-database-crawler/" + rootCmd.Version
 
 func FetchTask() (t *Task, err error) {
 	res, err := serverClient.PostForm(
@@ -175,4 +178,11 @@ func CancelTask(websiteId uint64) (err error) {
 	}
 
 	return
+}
+
+type ServerTripper struct{}
+
+func (t *ServerTripper) RoundTrip(req *http.Request) (res *http.Response, err error) {
+	req.Header.Set("User-Agent", serverUserAgent)
+	return http.DefaultClient.Transport.RoundTrip(req)
 }
