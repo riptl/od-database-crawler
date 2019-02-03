@@ -72,6 +72,9 @@ func ResumeTasks() (tasks []*OD, err error) {
 }
 
 func resumeQueue(id uint64) (od *OD, err error) {
+	logrus.WithField("id", id).
+		Info("Found unfinished")
+
 	fPath := filepath.Join("queue", strconv.FormatUint(id, 10))
 
 	// Try to find pause file
@@ -110,6 +113,9 @@ func resumeQueue(id uint64) (od *OD, err error) {
 	if err != nil { return nil, err }
 
 	od.WCtx.Queue = bq
+
+	logrus.WithField("id", id).
+		Info("Resuming task")
 
 	return od, nil
 }
