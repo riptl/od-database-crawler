@@ -84,9 +84,14 @@ func SaveTask(od *OD) (err error) {
 	err = os.Mkdir(dir, 0777)
 	if err != nil { return err }
 
+	// Open pause file
 	pausedF, err := os.OpenFile(fPath, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0666)
 	if err != nil { return err }
 	defer pausedF.Close()
+
+	// Write pause file version
+	_, err = pausedF.Write([]byte("ODPAUSE-"))
+	if err != nil { return err }
 
 	// Create save state
 	paused := PausedOD {
@@ -142,6 +147,13 @@ func resumeQueue(id uint64) (od *OD, err error) {
 		Task:       &od.Task,
 		Result:     &od.Result,
 		BaseUri:    &od.BaseUri,
+	}
+
+	var version [8]byte
+	_, err = io.ReadFull(pausedF, version[:])
+	if err != nil { return nil, err }
+	if !bytes.Equal(version[:], []byte("ODPAUSE-")) {
+		return nil, fmt.Errorf("unsupported pause file")
 	}
 
 	// Read pause settings
