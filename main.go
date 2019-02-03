@@ -97,7 +97,7 @@ func cmdBase(_ *cobra.Command, _ []string) {
 			if err != nil {
 				logrus.WithError(err).
 					Error("Failed to get new task")
-				time.Sleep(viper.GetDuration(ConfCooldown))
+				sleep(viper.GetDuration(ConfCooldown), appCtx)
 				continue
 			}
 			if t == nil {
@@ -188,4 +188,13 @@ func listenCtrlC(soft, hard context.CancelFunc) {
 func hardShutdown(c context.Context) {
 	<-c.Done()
 	os.Exit(1)
+}
+
+func sleep(d time.Duration, c context.Context) {
+	select {
+	case <-time.After(d):
+		break
+	case <-c.Done():
+		break
+	}
 }
