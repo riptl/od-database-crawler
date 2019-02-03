@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"os"
+	"os/signal"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -76,20 +77,21 @@ func cmdBase(_ *cobra.Command, _ []string) {
 	onlineMode = true
 	readConfig()
 
-	// TODO Graceful shutdown
-	appCtx := context.Background()
-	forceCtx := context.Background()
+	appCtx, soft := context.WithCancel(context.Background())
+	forceCtx, hard := context.WithCancel(context.Background())
+	go hardShutdown(forceCtx)
+	go listenCtrlC(soft, hard)
 
 	inRemotes := make(chan *OD)
 	go LoadResumeTasks(inRemotes)
-	go Schedule(forceCtx, inRemotes)
+	go Schedule(appCtx, inRemotes)
 
 	ticker := time.NewTicker(config.Recheck)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-appCtx.Done():
-			return
+			goto shutdown
 		case <-ticker.C:
 			t, err := FetchTask()
 			if err != nil {
@@ -128,6 +130,9 @@ func cmdBase(_ *cobra.Command, _ []string) {
 			ScheduleTask(inRemotes, t, &baseUri)
 		}
 	}
+
+	shutdown:
+	globalWait.Wait()
 }
 
 func cmdCrawler(_ *cobra.Command, args []string) error {
@@ -165,4 +170,22 @@ func cmdCrawler(_ *cobra.Command, args []string) error {
 	globalWait.Wait()
 
 	return nil
+}
+
+func listenCtrlC(soft, hard context.CancelFunc) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+
+	<-c
+	logrus.Info(">>> Shutting down crawler... <<<")
+	soft()
+
+	<-c
+	logrus.Warning(">>> Force shutdown! <<<")
+	hard()
+}
+
+func hardShutdown(c context.Context) {
+	<-c.Done()
+	os.Exit(1)
 }

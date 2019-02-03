@@ -50,9 +50,7 @@ func scheduleNewTask(c context.Context, remote *OD) bool {
 	if err != nil { panic(err) }
 
 	// Spawn workers
-	for i := 0; i < config.Workers; i++ {
-		go remote.WCtx.Worker(results)
-	}
+	remote.WCtx.SpawnWorkers(c, results, config.Workers)
 
 	// Enqueue initial job
 	atomic.AddInt32(&numActiveTasks, 1)
@@ -167,16 +165,33 @@ func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error
 	defer close(results)
 
 	// Wait for all jobs on remote to finish
-	o.Wait.Wait()
+	for {
+		// Natural finish
+		if atomic.LoadInt64(&o.InProgress) == 0 {
+			o.onTaskFinished()
+			return
+		}
+		// Abort
+		if atomic.LoadInt32(&o.WCtx.aborted) != 0 {
+			// Wait for all workers to finish
+			o.WCtx.workers.Wait()
+			o.onTaskPaused()
+			return
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+func (o *OD) onTaskFinished() {
+	defer atomic.AddInt32(&numActiveTasks, -1)
 
 	// Close queue
 	if err := o.WCtx.Queue.Close(); err != nil {
 		panic(err)
 	}
-	atomic.AddInt32(&numActiveTasks, -1)
 
 	// Log finish
-
 	logrus.WithFields(logrus.Fields{
 		"id":  o.Task.WebsiteId,
 		"url": o.BaseUri.String(),
@@ -197,6 +212,37 @@ func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error
 	} else {
 		o.Result.StatusCode = "success"
 	}
+}
+
+func (o *OD) onTaskPaused() {
+	defer atomic.AddInt32(&numActiveTasks, -1)
+
+	// Close queue
+	if err := o.WCtx.Queue.Close(); err != nil {
+		panic(err)
+	}
+
+	// Set current end time
+	o.Result.EndTimeUnix = time.Now().Unix()
+
+	// Save task metadata
+	err := SaveTask(o)
+	if err != nil {
+		// Log finish
+		logrus.WithFields(logrus.Fields{
+			"err": err.Error(),
+			"id":  o.Task.WebsiteId,
+			"url": o.BaseUri.String(),
+		}).Error("Failed to save crawler state")
+		return
+	}
+
+	// Log finish
+	logrus.WithFields(logrus.Fields{
+		"id":  o.Task.WebsiteId,
+		"url": o.BaseUri.String(),
+		"duration": time.Since(o.Result.StartTime),
+	}).Info("Crawler paused")
 }
 
 func (t *Task) Collect(results chan File, f *os.File, errC chan<- error) {

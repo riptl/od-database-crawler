@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -71,6 +72,35 @@ func ResumeTasks() (tasks []*OD, err error) {
 	return tasks, nil
 }
 
+func SaveTask(od *OD) (err error) {
+	fPath := filepath.Join("queue",
+		strconv.FormatUint(od.Task.WebsiteId, 10),
+		"PAUSED")
+
+	pausedF, err := os.OpenFile(fPath, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0666)
+	if err != nil { return err }
+	defer pausedF.Close()
+
+	// Create save state
+	paused := PausedOD {
+		Task:       &od.Task,
+		Result:     &od.Result,
+		BaseUri:    &od.BaseUri,
+		InProgress: atomic.LoadInt64(&od.InProgress),
+	}
+
+	// Write pause settings
+	pauseEnc := gob.NewEncoder(pausedF)
+	err = pauseEnc.Encode(&paused)
+	if err != nil { return err }
+
+	// Write pause scan state
+	err = od.Scanned.Marshal(pausedF)
+	if err != nil { return err }
+
+	return nil
+}
+
 func resumeQueue(id uint64) (od *OD, err error) {
 	logrus.WithField("id", id).
 		Info("Found unfinished")
@@ -94,15 +124,16 @@ func resumeQueue(id uint64) (od *OD, err error) {
 	// Make the paused struct point to OD fields
 	// So gob loads values into the OD struct
 	paused := PausedOD {
-		Task:    &od.Task,
-		Result:  &od.Result,
-		BaseUri: &od.BaseUri,
+		Task:       &od.Task,
+		Result:     &od.Result,
+		BaseUri:    &od.BaseUri,
 	}
 
 	// Read pause settings
 	pauseDec := gob.NewDecoder(pausedF)
 	err = pauseDec.Decode(&paused)
 	if err != nil { return nil, err }
+	atomic.StoreInt64(&od.InProgress, paused.InProgress)
 
 	// Read pause scan state
 	err = od.Scanned.Unmarshal(pausedF)

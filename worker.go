@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/beeker1121/goque"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -18,10 +19,29 @@ type WorkerContext struct {
 	Queue *BufferedQueue
 	lastRateLimit time.Time
 	numRateLimits int
+	workers sync.WaitGroup
+	aborted int32
 }
 
-func (w *WorkerContext) Worker(results chan<- File) {
+func (w *WorkerContext) SpawnWorkers(c context.Context, results chan<- File, n int) {
+	w.workers.Add(n)
+	for i := 0; i < n; i++ {
+		go w.Worker(c, results)
+	}
+}
+
+func (w *WorkerContext) Worker(c context.Context, results chan<- File) {
+	defer w.workers.Done()
+
 	for {
+		select {
+		case <-c.Done():
+			// Not yet done
+			atomic.StoreInt32(&w.aborted, 1)
+			return
+		default:
+		}
+
 		job, err := w.Queue.Dequeue()
 		switch err {
 		case goque.ErrEmpty:
@@ -156,7 +176,7 @@ func (w *WorkerContext) DoJob(job *Job, f *File) (newJobs []Job, err error) {
 }
 
 func (w *WorkerContext) queueJob(job Job) {
-	w.OD.Wait.Add(1)
+	atomic.AddInt64(&w.OD.InProgress, 1)
 
 	if w.numRateLimits > 0 {
 		if time.Since(w.lastRateLimit) > 5 * time.Second {
@@ -173,7 +193,7 @@ func (w *WorkerContext) queueJob(job Job) {
 }
 
 func (w *WorkerContext) finishJob() {
-	w.OD.Wait.Done()
+	atomic.AddInt64(&w.OD.InProgress, -1)
 }
 
 func isErrSilent(err error) bool {
