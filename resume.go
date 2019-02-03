@@ -245,14 +245,6 @@ func readPauseFile(od *OD, r io.Reader) (err error) {
 	if err != nil { return err }
 	atomic.StoreInt64(&od.InProgress, paused.InProgress)
 
-	// Check mark
-	var mark [8]byte
-	_, err = io.ReadFull(r, mark[:])
-	if err != nil { return err }
-	if !bytes.Equal(mark[:], []byte("--------")) {
-		return fmt.Errorf("corrupt pause file")
-	}
-
 	err = readPauseStateTree(od, r)
 	if err != nil {
 		return fmt.Errorf("failed to read state tree: %s", err)
