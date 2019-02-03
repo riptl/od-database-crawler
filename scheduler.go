@@ -125,7 +125,7 @@ func (o *OD) Watch(results chan File) {
 	// Open crawl results file
 	f, err := os.OpenFile(
 		filePath,
-		os.O_CREATE | os.O_RDWR | os.O_TRUNC,
+		os.O_CREATE | os.O_RDWR | os.O_APPEND,
 		0644,
 	)
 	if err != nil {
