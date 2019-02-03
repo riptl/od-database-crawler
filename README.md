@@ -1,4 +1,5 @@
 # od-database Go crawler 🚀
+[![Build Status](https://travis-ci.org/terorie/od-database-crawler.svg?branch=master)](https://travis-ci.org/terorie/od-database-crawler)
 > by terorie 2018 :P
 
  * Crawler for [__OD-Database__](https://github.com/simon987/od-database)
