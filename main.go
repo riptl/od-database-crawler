@@ -17,7 +17,7 @@ var configFile string
 
 var rootCmd = cobra.Command {
 	Use: "od-database-crawler",
-	Version: "1.2.0",
+	Version: "1.2.1",
 	Short: "OD-Database Go crawler",
 	Long: helpText,
 	PersistentPreRunE: preRun,
