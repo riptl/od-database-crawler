@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+func init() {
+	gob.Register(&PausedOD{})
+}
+
 func LoadResumeTasks(inRemotes chan<- *OD) {
 	resumed, err := ResumeTasks()
 	if err != nil {
