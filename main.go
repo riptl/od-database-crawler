@@ -97,7 +97,9 @@ func cmdBase(_ *cobra.Command, _ []string) {
 			if err != nil {
 				logrus.WithError(err).
 					Error("Failed to get new task")
-				sleep(viper.GetDuration(ConfCooldown), appCtx)
+				if !sleep(viper.GetDuration(ConfCooldown), appCtx) {
+					goto shutdown
+				}
 				continue
 			}
 			if t == nil {
@@ -190,11 +192,11 @@ func hardShutdown(c context.Context) {
 	os.Exit(1)
 }
 
-func sleep(d time.Duration, c context.Context) {
+func sleep(d time.Duration, c context.Context) bool {
 	select {
 	case <-time.After(d):
-		break
+		return true
 	case <-c.Done():
-		break
+		return false
 	}
 }

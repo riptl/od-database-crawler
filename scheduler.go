@@ -65,11 +65,8 @@ func scheduleNewTask(c context.Context, remote *OD) bool {
 
 	// Sleep if max number of tasks are active
 	for atomic.LoadInt32(&numActiveTasks) > config.Tasks {
-		select {
-		case <-c.Done():
-			return false
-		case <-time.After(time.Second):
-			return true
+		if !sleep(time.Second, c) {
+			break
 		}
 	}
 
