@@ -73,9 +73,13 @@ func ResumeTasks() (tasks []*OD, err error) {
 }
 
 func SaveTask(od *OD) (err error) {
-	fPath := filepath.Join("queue",
-		strconv.FormatUint(od.Task.WebsiteId, 10),
-		"PAUSED")
+	dir := filepath.Join("queue",
+		strconv.FormatUint(od.Task.WebsiteId, 10))
+
+	fPath := filepath.Join(dir, "PAUSED")
+
+	err = os.Mkdir(dir, 0777)
+	if err != nil { return err }
 
 	pausedF, err := os.OpenFile(fPath, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0666)
 	if err != nil { return err }
