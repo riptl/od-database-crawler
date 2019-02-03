@@ -184,5 +184,5 @@ type ServerTripper struct{}
 
 func (t *ServerTripper) RoundTrip(req *http.Request) (res *http.Response, err error) {
 	req.Header.Set("User-Agent", serverUserAgent)
-	return http.DefaultClient.Transport.RoundTrip(req)
+	return http.DefaultTransport.RoundTrip(req)
 }
