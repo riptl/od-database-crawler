@@ -141,7 +141,9 @@ func (o *OD) Watch(results chan File) {
 
 	// Block until all results are written
 	// (closes results channel)
-	o.handleCollect(results, f, collectErrC)
+	if !o.handleCollect(results, f, collectErrC) {
+		return
+	}
 
 	// Exit code of Collect()
 	err = <-collectErrC
@@ -161,7 +163,8 @@ func (o *OD) Watch(results chan File) {
 	}
 }
 
-func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error) {
+// Returns if aborted naturally (results ready for upload)
+func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error) bool {
 	// Begin collecting results
 	go o.Task.Collect(results, f, collectErrC)
 	defer close(results)
@@ -171,14 +174,14 @@ func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error
 		// Natural finish
 		if atomic.LoadInt64(&o.InProgress) == 0 {
 			o.onTaskFinished()
-			return
+			return true
 		}
 		// Abort
 		if atomic.LoadInt32(&o.WCtx.aborted) != 0 {
 			// Wait for all workers to finish
 			o.WCtx.workers.Wait()
 			o.onTaskPaused()
-			return
+			return false
 		}
 
 		time.Sleep(500 * time.Millisecond)
