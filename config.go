@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -135,17 +134,23 @@ func prepareConfig() {
 
 func readConfig() {
 	// If config.yml in working dir, use it
-	if _, err := os.Stat("config.yml"); err == nil {
-		configFile = "config.yml"
+	if configFile == "" {
+		_, err := os.Stat("config.yml")
+		if err == nil {
+			configFile = "config.yml"
+		}
 	}
 
 	if configFile != "" {
-		var err error
-		confPath, err := filepath.Abs(configFile)
-		if err != nil { panic(err) }
+		confF, err := os.Open(configFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		defer confF.Close()
 
-		viper.SetConfigFile(confPath)
-		err = viper.ReadInConfig()
+		viper.SetConfigType("yml")
+		err = viper.ReadConfig(confF)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
