@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/gob"
+	"fmt"
 	"github.com/beeker1121/goque"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -98,8 +101,16 @@ func SaveTask(od *OD) (err error) {
 	err = pauseEnc.Encode(&paused)
 	if err != nil { return err }
 
+	// Save mark
+	_, err = pausedF.Write([]byte("--------"))
+	if err != nil { return err }
+
 	// Write pause scan state
 	err = od.Scanned.Marshal(pausedF)
+	if err != nil { return err }
+
+	// Save mark
+	_, err = pausedF.Write([]byte("--------"))
 	if err != nil { return err }
 
 	return nil
@@ -139,9 +150,24 @@ func resumeQueue(id uint64) (od *OD, err error) {
 	if err != nil { return nil, err }
 	atomic.StoreInt64(&od.InProgress, paused.InProgress)
 
+	// Check mark
+	var mark [8]byte
+	_, err = io.ReadFull(pausedF, mark[:])
+	if err != nil { return nil, err }
+	if !bytes.Equal(mark[:], []byte("--------")) {
+		return nil, fmt.Errorf("corrupt pause file")
+	}
+
 	// Read pause scan state
 	err = od.Scanned.Unmarshal(pausedF)
 	if err != nil { return nil, err }
+
+	// Check mark
+	_, err = io.ReadFull(pausedF, mark[:])
+	if err != nil { return nil, err }
+	if !bytes.Equal(mark[:], []byte("--------")) {
+		return nil, fmt.Errorf("corrupt pause file")
+	}
 
 	// Open queue
 	bq, err := OpenQueue(fPath)
