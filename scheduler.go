@@ -21,8 +21,13 @@ var totalQueued int64
 func Schedule(c context.Context, remotes <-chan *OD) {
 	go Stats(c)
 
-	for remote := range remotes {
-		if !scheduleNewTask(c, remote) {
+	for {
+		select {
+		case remote := <-remotes:
+			if !scheduleNewTask(c, remote) {
+				return
+			}
+		case <-c.Done():
 			return
 		}
 	}
