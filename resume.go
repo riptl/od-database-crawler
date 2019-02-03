@@ -30,8 +30,6 @@ func LoadResumeTasks(inRemotes chan<- *OD) {
 	}
 
 	for _, remote := range resumed {
-		// TODO Cleanup globalWait management
-		globalWait.Add(1)
 		inRemotes <- remote
 	}
 }

@@ -66,6 +66,7 @@ func scheduleNewTask(c context.Context, remote *OD) bool {
 	})
 
 	// Upload result when ready
+	globalWait.Add(1)
 	go remote.Watch(results)
 
 	// Sleep if max number of tasks are active
@@ -83,7 +84,6 @@ func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
 		return
 	}
 
-	globalWait.Add(1)
 	now := time.Now()
 	od := &OD {
 		Task: *t,
