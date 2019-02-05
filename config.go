@@ -92,7 +92,7 @@ func prepareConfig() {
 
 	pf.Uint(ConfJobBufferSize, 5000, "Crawler: Task queue cache size")
 
-	pf.Duration(ConfResume, 72 * time.Hour, "Crawler: Resume tasks not older than x")
+	pf.Duration(ConfResume, 0, "Crawler: Resume tasks not older than x")
 
 	pf.Duration(ConfCrawlStats, time.Second, "Log: Crawl stats interval")
 
