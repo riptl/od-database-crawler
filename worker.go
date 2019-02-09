@@ -23,7 +23,7 @@ type WorkerContext struct {
 }
 
 func (w *WorkerContext) Prepare() {
-	w.client = newHTTPClient(&w.OD.BaseUri)
+	w.client = newHTTPClient(w.OD.BaseUri)
 }
 
 func (w *WorkerContext) Worker(results chan<- File) {

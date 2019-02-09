@@ -562,6 +562,20 @@ func validOptionalPort(port string) bool {
 	return true
 }
 
+// TODO Check if RFC-compliant (99% sure not)
+func (u *URL) AddDefaultPort() {
+	if strings.ContainsRune(u.Host, ':') {
+		return
+	}
+
+	switch u.Scheme {
+	case SchemeHTTP:
+		u.Host += ":80"
+	case SchemeHTTPS:
+		u.Host += ":443"
+	}
+}
+
 // String reassembles the URL into a valid URL string.
 // The general form of the result is one of:
 //

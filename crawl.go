@@ -20,7 +20,7 @@ var tlsConfig = tls.Config {
 	InsecureSkipVerify: true,
 }
 
-func newHTTPClient(url *fasturl.URL) *fasthttp.PipelineClient {
+func newHTTPClient(url fasturl.URL) *fasthttp.PipelineClient {
 	var isTLS bool
 	switch url.Scheme {
 	case fasturl.SchemeHTTP:
@@ -28,6 +28,8 @@ func newHTTPClient(url *fasturl.URL) *fasthttp.PipelineClient {
 	case fasturl.SchemeHTTPS:
 		isTLS = true
 	}
+
+	url.AddDefaultPort()
 
 	return &fasthttp.PipelineClient {
 		MaxConns:     viper.GetInt(ConfWorkers),
