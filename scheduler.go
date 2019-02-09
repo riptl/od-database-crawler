@@ -22,16 +22,15 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 	go Stats(c)
 
 	for remote := range remotes {
+		// Create HTTP client
+		remote.WCtx.OD = remote
+		remote.WCtx.Prepare()
+
 		logrus.WithField("url", remote.BaseUri.String()).
 			Info("Starting crawler")
 
-		// Create HTTP client
-		remote.WCtx.Prepare()
-
 		// Collect results
 		results := make(chan File)
-
-		remote.WCtx.OD = remote
 
 		// Get queue path
 		queuePath := path.Join("queue", fmt.Sprintf("%d", remote.Task.WebsiteId))
