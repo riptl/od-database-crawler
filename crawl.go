@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"github.com/spf13/viper"
 	"github.com/terorie/od-database-crawler/ds/redblackhash"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"github.com/valyala/fasthttp"
@@ -15,24 +16,33 @@ import (
 	"time"
 )
 
-var client = fasthttp.Client {
-	TLSConfig: &tls.Config{
-		InsecureSkipVerify: true,
-	},
+var tlsConfig = tls.Config {
+	InsecureSkipVerify: true,
 }
 
-func setDialTimeout(d time.Duration) {
-	client.Dial = func(addr string) (net.Conn, error) {
-		return fasthttp.DialTimeout(addr, d)
+func newHTTPClient(url *fasturl.URL) *fasthttp.PipelineClient {
+	var isTLS bool
+	switch url.Scheme {
+	case fasturl.SchemeHTTP:
+		isTLS = false
+	case fasturl.SchemeHTTPS:
+		isTLS = true
+	}
+
+	return &fasthttp.PipelineClient {
+		MaxConns:     viper.GetInt(ConfWorkers),
+		Addr:         url.Host,
+		IsTLS:        isTLS,
+		TLSConfig:    &tlsConfig,
+		ReadTimeout:  viper.GetDuration(ConfTimeout),
+		WriteTimeout: viper.GetDuration(ConfTimeout) / 2,
+		Dial: func(addr string) (conn net.Conn, e error) {
+			return fasthttp.DialTimeout(addr, viper.GetDuration(ConfDialTimeout))
+		},
 	}
 }
 
-func setTimeout(d time.Duration) {
-	client.ReadTimeout = d
-	client.WriteTimeout = d / 2
-}
-
-func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
+func (w *WorkerContext) GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	f.IsDir = true
 	f.Name = path.Base(j.Uri.Path)
 
@@ -45,7 +55,7 @@ func GetDir(j *Job, f *File) (links []fasturl.URL, err error) {
 	res := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.Do(req, res)
+	err = w.client.Do(req, res)
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil {
@@ -123,6 +133,14 @@ func ParseDir(body []byte, baseUri *fasturl.URL) (links []fasturl.URL, err error
 					continue
 				}
 
+				if strings.HasSuffix(link.Path, ".php") {
+					continue
+				}
+
+				if strings.Contains(link.Path, "/cgi-bin/") {
+					continue
+				}
+
 				links = append(links, link)
 			}
 		}
@@ -131,7 +149,7 @@ func ParseDir(body []byte, baseUri *fasturl.URL) (links []fasturl.URL, err error
 	return
 }
 
-func GetFile(u fasturl.URL, f *File) (err error) {
+func (w *WorkerContext) GetFile(u fasturl.URL, f *File) (err error) {
 	f.IsDir = false
 	u.Path = path.Clean(u.Path)
 	f.Name = path.Base(u.Path)
@@ -148,7 +166,7 @@ func GetFile(u fasturl.URL, f *File) (err error) {
 	res.SkipBody = true
 	defer fasthttp.ReleaseResponse(res)
 
-	err = client.Do(req, res)
+	err = w.client.Do(req, res)
 	fasthttp.ReleaseRequest(req)
 
 	if err != nil {

@@ -25,6 +25,9 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		logrus.WithField("url", remote.BaseUri.String()).
 			Info("Starting crawler")
 
+		// Create HTTP client
+		remote.WCtx.Prepare()
+
 		// Collect results
 		results := make(chan File)
 

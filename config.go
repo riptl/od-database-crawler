@@ -194,10 +194,6 @@ func readConfig() {
 
 	config.UserAgent = viper.GetString(ConfUserAgent)
 
-	setDialTimeout(viper.GetDuration(ConfDialTimeout))
-
-	setTimeout(viper.GetDuration(ConfTimeout))
-
 	config.JobBufferSize = viper.GetInt(ConfJobBufferSize)
 
 	config.Verbose = viper.GetBool(ConfVerbose)

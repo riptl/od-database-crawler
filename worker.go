@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/beeker1121/goque"
 	"github.com/sirupsen/logrus"
+	"github.com/valyala/fasthttp"
 	"math"
 	"sort"
 	"strings"
@@ -18,6 +19,11 @@ type WorkerContext struct {
 	Queue *BufferedQueue
 	lastRateLimit time.Time
 	numRateLimits int
+	client *fasthttp.PipelineClient
+}
+
+func (w *WorkerContext) Prepare() {
+	w.client = newHTTPClient(&w.OD.BaseUri)
 }
 
 func (w *WorkerContext) Worker(results chan<- File) {
@@ -91,7 +97,7 @@ func (w *WorkerContext) DoJob(job *Job, f *File) (newJobs []Job, err error) {
 	if len(job.Uri.Path) == 0 { return }
 	if job.Uri.Path[len(job.Uri.Path)-1] == '/' {
 		// Load directory
-		links, err := GetDir(job, f)
+		links, err := w.GetDir(job, f)
 		if err != nil {
 			if !isErrSilent(err) {
 				logrus.WithError(err).
@@ -141,7 +147,7 @@ func (w *WorkerContext) DoJob(job *Job, f *File) (newJobs []Job, err error) {
 		}
 	} else {
 		// Load file
-		err := GetFile(job.Uri, f)
+		err := w.GetFile(job.Uri, f)
 		if err != nil {
 			if !isErrSilent(err) {
 				logrus.WithError(err).

@@ -35,7 +35,7 @@ var serverCmd = cobra.Command {
 }
 
 var crawlCmd = cobra.Command {
-	Use: "crawl",
+	Use: "crawl <url>",
 	Short: "Crawl an URL",
 	Long: "Crawl the URL specified.\n" +
 		"Results will not be uploaded to the database,\n" +
