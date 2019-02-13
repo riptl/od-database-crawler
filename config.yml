@@ -53,7 +53,7 @@ crawl:
   # Please be careful with this setting!
   # The crawler fires fast and more than
   # ten connections can overwhelm a server.
-  connections: 4
+  connections: 1
 
   # How often to retry getting data
   # from the site before giving up
