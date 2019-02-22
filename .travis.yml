@@ -4,20 +4,15 @@ language: go
 
 go:
   - "1.11.x"
-  - master
 
 sudo: required
 
 services:
   - docker
 
-before_install:
-  - sudo apt update -y
-  - sudo apt install golang-go -y
-
 script:
   - go test .
-  - docker build -t terorie/od-database-crawler
+  - docker build -t terorie/od-database-crawler .
 
 after_success:
   - if [[ "$TRAVIS_BRANCH" == "stable" ]]; then
