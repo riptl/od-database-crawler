@@ -40,7 +40,9 @@ func FetchTask() (t *Task, err error) {
 
 	t = new(Task)
 	err = json.NewDecoder(res.Body).Decode(t)
-	if err != nil { return }
+	if _, ok := err.(*json.SyntaxError); ok {
+		return nil, fmt.Errorf("/task/get returned invalid JSON")
+	} else if err != nil { return }
 
 	return
 }
