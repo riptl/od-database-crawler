@@ -7,4 +7,4 @@ RUN cd /src \
 FROM alpine
 WORKDIR /app
 COPY --from=builder /src/binary /app/
-ENTRYPOINT ./binary
+ENTRYPOINT [ "/app/binary", "server" ]
