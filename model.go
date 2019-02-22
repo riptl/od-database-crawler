@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/terorie/od-database-crawler/ds/redblackhash"
 	"github.com/terorie/od-database-crawler/fasturl"
+	"sync"
 	"time"
 )
 
@@ -29,19 +30,12 @@ type Job struct {
 }
 
 type OD struct {
-	Task       Task
-	Result     TaskResult
-	InProgress int64
-	BaseUri    fasturl.URL
-	WCtx       WorkerContext
-	Scanned    redblackhash.Tree
-}
-
-type PausedOD struct {
-	Task       *Task
-	Result     *TaskResult
-	BaseUri    *fasturl.URL
-	InProgress int64
+	Task    Task
+	Result  TaskResult
+	Wait    sync.WaitGroup
+	BaseUri fasturl.URL
+	WCtx    WorkerContext
+	Scanned redblackhash.Tree
 }
 
 type File struct {

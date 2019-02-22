@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/terorie/od-database-crawler/fasturl"
 	"os"
-	"os/signal"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -62,6 +61,8 @@ func preRun(cmd *cobra.Command, args []string) error {
 	if err := os.MkdirAll("queue", 0755);
 		err != nil { panic(err) }
 
+	readConfig()
+
 	return nil
 }
 
@@ -74,32 +75,25 @@ func main() {
 }
 
 func cmdBase(_ *cobra.Command, _ []string) {
-	onlineMode = true
-	readConfig()
-
-	appCtx, soft := context.WithCancel(context.Background())
-	forceCtx, hard := context.WithCancel(context.Background())
-	go hardShutdown(forceCtx)
-	go listenCtrlC(soft, hard)
+	// TODO Graceful shutdown
+	appCtx := context.Background()
+	forceCtx := context.Background()
 
 	inRemotes := make(chan *OD)
-	go LoadResumeTasks(inRemotes)
-	go Schedule(appCtx, inRemotes)
+	go Schedule(forceCtx, inRemotes)
 
 	ticker := time.NewTicker(config.Recheck)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-appCtx.Done():
-			goto shutdown
+			return
 		case <-ticker.C:
 			t, err := FetchTask()
 			if err != nil {
 				logrus.WithError(err).
 					Error("Failed to get new task")
-				if !sleep(viper.GetDuration(ConfCooldown), appCtx) {
-					goto shutdown
-				}
+				time.Sleep(viper.GetDuration(ConfCooldown))
 				continue
 			}
 			if t == nil {
@@ -115,7 +109,13 @@ func cmdBase(_ *cobra.Command, _ []string) {
 			if urlErr, ok := err.(*fasturl.Error); ok && urlErr.Err == fasturl.ErrUnknownScheme {
 				// Not an error
 				err = nil
-				// TODO FTP crawler
+
+				// Give back task
+				//err2 := CancelTask(t.WebsiteId)
+				//if err2 != nil {
+				//	logrus.Error(err2)
+				//}
+
 				continue
 			} else if err != nil {
 				logrus.WithError(err).
@@ -126,15 +126,9 @@ func cmdBase(_ *cobra.Command, _ []string) {
 			ScheduleTask(inRemotes, t, &baseUri)
 		}
 	}
-
-	shutdown:
-	globalWait.Wait()
 }
 
 func cmdCrawler(_ *cobra.Command, args []string) error {
-	onlineMode = false
-	readConfig()
-
 	arg := args[0]
 	// https://github.com/golang/go/issues/19779
 	if !strings.Contains(arg, "://") {
@@ -166,31 +160,4 @@ func cmdCrawler(_ *cobra.Command, args []string) error {
 	globalWait.Wait()
 
 	return nil
-}
-
-func listenCtrlC(soft, hard context.CancelFunc) {
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt)
-
-	<-c
-	logrus.Info(">>> Shutting down crawler... <<<")
-	soft()
-
-	<-c
-	logrus.Warning(">>> Force shutdown! <<<")
-	hard()
-}
-
-func hardShutdown(c context.Context) {
-	<-c.Done()
-	os.Exit(1)
-}
-
-func sleep(d time.Duration, c context.Context) bool {
-	select {
-	case <-time.After(d):
-		return true
-	case <-c.Done():
-		return false
-	}
 }

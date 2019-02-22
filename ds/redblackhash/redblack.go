@@ -15,10 +15,7 @@ package redblackhash
 
 import (
 	"bytes"
-	"encoding/binary"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"sync"
 )
 
@@ -45,13 +42,6 @@ type Node struct {
 	Right  *Node
 	Parent *Node
 }
-
-type nodeHeader struct {
-	Key   *Key
-	Color color
-}
-
-var o = binary.BigEndian
 
 func (k *Key) Compare(o *Key) int {
 	return bytes.Compare(k[:], o[:])
@@ -243,7 +233,7 @@ func (tree *Tree) String() string {
 }
 
 func (node *Node) String() string {
-	return hex.EncodeToString(node.Key[:16]) + "..."
+	return fmt.Sprintf("%v", node.Key)
 }
 
 func output(node *Node, prefix string, isTail bool, str *string) {
@@ -489,119 +479,6 @@ func (tree *Tree) deleteCase6(node *Node) {
 		sibling.Left.color = black
 		tree.rotateRight(node.Parent)
 	}
-}
-
-func (tree *Tree) Marshal(w io.Writer) (err error) {
-	tree.Lock()
-	defer tree.Unlock()
-
-	err = binary.Write(w, o, uint64(0x617979797979790A))
-	if err != nil { return err }
-
-	err = marshal(tree.Root, w)
-	if err != nil { return err }
-
-	err = binary.Write(w, o, uint64(0x6C6D616F6F6F6F0A))
-	if err != nil { return err }
-
-	return nil
-}
-
-func marshal(n *Node, w io.Writer) (err error) {
-	if n == nil {
-		err = binary.Write(w, o, uint64(0x796565656565740A))
-		return err
-	}
-
-	err = binary.Write(w, o, uint64(0xF09F85B1EFB88F0A))
-	if err != nil { return err }
-
-	_, err = w.Write(n.Key[:])
-	if err != nil { return err }
-
-	var colorI uint64
-	if n.color {
-		colorI = 0x7468652D6579657C
-	} else {
-		colorI = 0x6865782B7465727C
-	}
-
-	err = binary.Write(w, o, colorI)
-	if err != nil { return err }
-
-	err = marshal(n.Left, w)
-	if err != nil { return err }
-
-	err = marshal(n.Right, w)
-	if err != nil { return err }
-
-	return nil
-}
-
-func (tree *Tree) Unmarshal(r io.Reader) (err error) {
-	tree.Lock()
-	defer tree.Unlock()
-
-	var sof uint64
-	err = binary.Read(r, o, &sof)
-	if err != nil { return err }
-	if sof != 0x617979797979790A {
-		return fmt.Errorf("redblack: wrong format")
-	}
-
-	tree.Root, tree.size, err = unmarshal(r)
-	if err != nil { return err }
-
-	var eof uint64
-	err = binary.Read(r, o, &eof)
-	if err != nil { return err }
-	if eof != 0x6C6D616F6F6F6F0A {
-		return fmt.Errorf("redblack: end of file missing")
-	}
-
-	return nil
-}
-
-func unmarshal(r io.Reader) (n *Node, size int, err error) {
-	var head uint64
-	err = binary.Read(r, o, &head)
-	if err != nil { return nil, 0, err }
-
-	size = 1
-
-	switch head {
-	case 0x796565656565740A:
-		return nil, 0, nil
-	case 0xF09F85B1EFB88F0A:
-		n = new(Node)
-
-		_, err = io.ReadFull(r, n.Key[:])
-		if err != nil { return nil, 0, err }
-
-		var colorInt uint64
-		err = binary.Read(r, o, &colorInt)
-		if err != nil { return nil, 0, err }
-		switch colorInt {
-		case 0x7468652D6579657C:
-			n.color = true
-		case 0x6865782B7465727C:
-			n.color = false
-		default:
-			return nil, 0, fmt.Errorf("redblack: corrupt node color")
-		}
-	default:
-		return nil, 0, fmt.Errorf("redblack: corrupt node info")
-	}
-
-	var s2 int
-	n.Left, s2, err = unmarshal(r)
-	size += s2
-	if err != nil { return nil, 0, err }
-	n.Right, s2, err = unmarshal(r)
-	size += s2
-	if err != nil { return nil, 0, err }
-
-	return n, size, nil
 }
 
 func nodeColor(node *Node) color {
