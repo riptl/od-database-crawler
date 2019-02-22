@@ -1,10 +1,11 @@
-FROM golang:1.11.5 AS builder
-ADD . /src
-RUN cd /src \
- && go test . \
- && go build -o binary
+FROM golang:alpine as builder
+RUN apk add git && \
+	go get -d -v github.com/terorie/od-database-crawler
+WORKDIR /go/src/github.com/terorie/od-database-crawler
+RUN	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/od-database-crawler .
 
-FROM alpine
-WORKDIR /app
-COPY --from=builder /src/binary /app/
-ENTRYPOINT [ "/app/binary", "server" ]
+FROM scratch
+COPY script/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /go/od-database-crawler /go/
+VOLUME [ "/go" ]
+CMD ["/go/od-database-crawler", "server"]
