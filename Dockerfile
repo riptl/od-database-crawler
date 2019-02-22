@@ -1,8 +1,11 @@
 FROM golang:alpine as builder
+ADD . /go/src/github.com/terorie/od-database-crawler
 RUN apk add git && \
-	go get -d -v github.com/terorie/od-database-crawler
-WORKDIR /go/src/github.com/terorie/od-database-crawler
-RUN	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/od-database-crawler .
+	CGO_ENABLED=0 go install \
+		-d -v \
+		-a -installsuffix cgo \
+		-o /go/od-database-crawler \
+		github.com/terorie/od-database-crawler
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
