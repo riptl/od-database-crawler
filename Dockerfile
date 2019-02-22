@@ -6,6 +6,7 @@ RUN	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/od-database-c
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /go/od-database-crawler /go/
-VOLUME [ "/go" ]
-CMD ["/go/od-database-crawler", "server"]
+COPY --from=builder /go/od-database-crawler /bin/
+WORKDIR /oddb
+VOLUME [ "/oddb" ]
+CMD ["/bin/od-database-crawler", "server"]
