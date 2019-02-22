@@ -1,5 +1,13 @@
-language: go
+sudo: required
 
-go:
-  - "1.11.x"
-  - master
+services:
+  - docker
+
+script:
+  - docker build -t terorie/od-database-crawler .
+
+after_success:
+  - if [[ "$TRAVIS_BRANCH" == "stable" ]]; then
+      docker login -u terorie -p $DOCKER_PASSWORD ;
+      docker push terorie/od-database-crawler ;
+    fi
