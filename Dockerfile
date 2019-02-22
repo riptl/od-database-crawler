@@ -1,6 +1,6 @@
 FROM golang:1.11.5 AS builder
 ADD . /src
-RUN cd /src
+RUN cd /src \
  && go build -o binary
 
 FROM alpine
