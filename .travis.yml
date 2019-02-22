@@ -1,21 +1,13 @@
-# https://ops.tips/blog/travis-ci-push-docker-image/
-
-language: go
-
-go:
-  - "1.11.x"
-
 sudo: required
 
 services:
   - docker
 
 script:
-  - go test .
   - docker build -t terorie/od-database-crawler .
 
 after_success:
   - if [[ "$TRAVIS_BRANCH" == "stable" ]]; then
-      docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD ;
+      docker login -u terorie -p $DOCKER_PASSWORD ;
       docker push terorie/od-database-crawler ;
     fi
