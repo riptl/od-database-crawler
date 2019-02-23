@@ -1,6 +1,6 @@
 # od-database Go crawler 🚀
 [![Build Status](https://travis-ci.org/terorie/od-database-crawler.svg?branch=master)](https://travis-ci.org/terorie/od-database-crawler)
-> by terorie 2018 :P
+[![](https://tokei.rs/b1/github/terorie/od-database-crawler)](https://github.com/terorie/od-database-crawler).
 
  * Crawler for [__OD-Database__](https://github.com/simon987/od-database)
  * Crawls HTTP open directories (standard Web Server Listings)
