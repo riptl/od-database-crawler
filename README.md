@@ -1,6 +1,7 @@
 # OD-Database Crawler 🕷
 [![Build Status](https://travis-ci.org/terorie/od-database-crawler.svg?branch=master)](https://travis-ci.org/terorie/od-database-crawler)
 [![](https://tokei.rs/b1/github/terorie/od-database-crawler)](https://github.com/terorie/od-database-crawler)
+[![CodeFactor](https://www.codefactor.io/repository/github/terorie/od-database-crawler/badge/master)](https://www.codefactor.io/repository/github/terorie/od-database-crawler/overview/master)
 
  * Crawler for [__OD-Database__](https://github.com/simon987/od-database)
  * In production at https://od-db.the-eye.eu/
