@@ -1,11 +1,14 @@
-# od-database Go crawler 🚀
+# OD-Database Crawler 🕷
 [![Build Status](https://travis-ci.org/terorie/od-database-crawler.svg?branch=master)](https://travis-ci.org/terorie/od-database-crawler)
-> by terorie 2018 :P
+[![](https://tokei.rs/b1/github/terorie/od-database-crawler)](https://github.com/terorie/od-database-crawler)
+[![CodeFactor](https://www.codefactor.io/repository/github/terorie/od-database-crawler/badge/master)](https://www.codefactor.io/repository/github/terorie/od-database-crawler/overview/master)
 
  * Crawler for [__OD-Database__](https://github.com/simon987/od-database)
+ * In production at https://od-db.the-eye.eu/
+ * Over 880 TB actively crawled
  * Crawls HTTP open directories (standard Web Server Listings)
  * Gets name, path, size and modification time of all files
- * Lightweight and fast: __over 9000 requests per second__ on a standard laptop
+ * Lightweight and fast
 
 https://od-db.the-eye.eu/
 
