@@ -7,7 +7,7 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.3.1
 	github.com/syndtr/goleveldb v0.0.0-20181128100959-b001fa50d6b2 // indirect
-	github.com/valyala/fasthttp v1.1.0
+	github.com/valyala/fasthttp v1.2.0
 	golang.org/x/crypto v0.0.0-20190131182504-b8fe1690c613
 	golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3
 )
