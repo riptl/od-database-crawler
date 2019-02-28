@@ -144,11 +144,18 @@ func uploadChunks(websiteId uint64, f *os.File) error {
 }
 
 func uploadResult(result *TaskResult) (err error) {
-	resultEnc, err := json.Marshal(result)
+	req := releaseTaskRequest {
+		TaskId: int64(result.WebsiteId),
+		ResultCode: result.ResultCode,
+		// TODO What is verification
+		Verification: 0,
+	}
+
+	resultEnc, err := json.Marshal(&req)
 	if err != nil { panic(err) }
 
 	res, err := serverClient.PostForm(
-		config.ServerUrl + "/task/complete",
+		config.ServerUrl + "/task/release",
 		url.Values {
 			"token": {config.Token},
 			"result": {string(resultEnc)},
@@ -165,6 +172,8 @@ func uploadResult(result *TaskResult) (err error) {
 }
 
 func CancelTask(websiteId uint64) (err error) {
+	// TODO Remove, no endpoint in task_tracker
+
 	res, err := serverClient.PostForm(
 		config.ServerUrl + "/task/cancel",
 		url.Values{
@@ -187,4 +196,25 @@ type ServerTripper struct{}
 func (t *ServerTripper) RoundTrip(req *http.Request) (res *http.Response, err error) {
 	req.Header.Set("User-Agent", serverUserAgent)
 	return http.DefaultTransport.RoundTrip(req)
+}
+
+const mimeJSON = "application/json"
+
+// https://github.com/simon987/task_tracker/blob/master/api/models.go
+
+type submitTaskRequest struct {
+	Project           int64  `json:"project"`
+	MaxRetries        int64  `json:"max_retries"`
+	Recipe            string `json:"recipe"`
+	Priority          int64  `json:"priority"`
+	MaxAssignTime     int64  `json:"max_assign_time"`
+	Hash64            int64  `json:"hash_u64"`
+	UniqueString      string `json:"unique_string"`
+	VerificationCount int64  `json:"verification_count"`
+}
+
+type releaseTaskRequest struct {
+	TaskId       int64      `json:"task_id"`
+	ResultCode   ResultCode `json:"result"`
+	Verification int64      `json:"verification"`
 }

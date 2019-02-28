@@ -7,19 +7,26 @@ import (
 	"time"
 )
 
+type ResultCode int
+const (
+	TR_OK = ResultCode(iota)
+	TR_FAIL
+	TR_SKIP
+)
+
 type Task struct {
 	WebsiteId uint64 `json:"website_id"`
 	Url       string `json:"url"`
 }
 
 type TaskResult struct {
-	StatusCode    string    `json:"status_code"`
-	FileCount     uint64    `json:"file_count"`
-	ErrorCount    uint64    `json:"-"`
-	StartTime     time.Time `json:"-"`
-	StartTimeUnix int64     `json:"start_time"`
-	EndTimeUnix   int64     `json:"end_time"`
-	WebsiteId     uint64    `json:"website_id"`
+	ResultCode    ResultCode `json:"status_code"`
+	FileCount     uint64     `json:"file_count"`
+	ErrorCount    uint64     `json:"-"`
+	StartTime     time.Time  `json:"-"`
+	StartTimeUnix int64      `json:"start_time"`
+	EndTimeUnix   int64      `json:"end_time"`
+	WebsiteId     uint64     `json:"website_id"`
 }
 
 type Job struct {
