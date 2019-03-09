@@ -13,38 +13,39 @@ import (
 )
 
 var config struct {
-	ServerUrl  string
-	Token      string
-	ServerTimeout time.Duration
-	Recheck    time.Duration
-	ChunkSize  int64
-	Retries    int
-	Workers    int
-	UserAgent  string
-	Tasks      int32
-	Verbose    bool
-	PrintHTTP  bool
-	JobBufferSize int
+	TrackerUrl     string
+	TrackerProject string
+	Token          string
+	ServerTimeout  time.Duration
+	Recheck        time.Duration
+	ChunkSize      int64
+	Retries        int
+	Workers        int
+	UserAgent      string
+	Tasks          int32
+	Verbose        bool
+	PrintHTTP      bool
+	JobBufferSize  int
 }
 
 var onlineMode bool
 
 const (
-	ConfServerUrl  = "server.url"
-	ConfToken      = "server.token"
-	ConfServerTimeout = "server.timeout"
-	ConfRecheck    = "server.recheck"
-	ConfCooldown   = "server.cooldown"
-	ConfChunkSize  = "server.upload_chunk"
-	ConfUploadRetries = "server.upload_retries"
+	ConfTrackerUrl          = "server.url"
+	ConfTrackerProject      = "server.project"
+	ConfServerTimeout       = "server.timeout"
+	ConfRecheck             = "server.recheck"
+	ConfCooldown            = "server.cooldown"
+	ConfChunkSize           = "server.upload_chunk"
+	ConfUploadRetries       = "server.upload_retries"
 	ConfUploadRetryInterval = "server.upload_retry_interval"
 
-	ConfTasks      = "crawl.tasks"
-	ConfRetries    = "crawl.retries"
-	ConfWorkers    = "crawl.connections"
-	ConfUserAgent  = "crawl.user-agent"
-	ConfDialTimeout = "crawl.dial_timeout"
-	ConfTimeout    = "crawl.timeout"
+	ConfTasks         = "crawl.tasks"
+	ConfRetries       = "crawl.retries"
+	ConfWorkers       = "crawl.connections"
+	ConfUserAgent     = "crawl.user-agent"
+	ConfDialTimeout   = "crawl.dial_timeout"
+	ConfTimeout       = "crawl.timeout"
 	ConfJobBufferSize = "crawl.job_buffer"
 
 	ConfCrawlStats = "output.crawl_stats"
@@ -61,21 +62,21 @@ func prepareConfig() {
 	pf.StringVar(&configFile, "config", "", "Config file")
 	configFile = os.Getenv("OD_CONFIG")
 
-	pf.String(ConfServerUrl, "http://od-db.the-eye.eu/api", "OD-DB server URL")
+	pf.String(ConfTrackerUrl, "http://tt.the-eye.eu/api", "task_tracker api URL")
 
-	pf.String(ConfToken, "", "OD-DB access token (env OD_SERVER_TOKEN)")
+	pf.String(ConfTrackerProject, "3", "task_tracker project id")
 
-	pf.Duration(ConfServerTimeout, 60 * time.Second, "OD-DB request timeout")
+	pf.Duration(ConfServerTimeout, 60*time.Second, "OD-DB request timeout")
 
-	pf.Duration(ConfRecheck, 1 * time.Second, "OD-DB: Poll interval for new jobs")
+	pf.Duration(ConfRecheck, 1*time.Second, "OD-DB: Poll interval for new jobs")
 
-	pf.Duration(ConfCooldown, 30 * time.Second, "OD-DB: Time to wait after a server-side error")
+	pf.Duration(ConfCooldown, 30*time.Second, "OD-DB: Time to wait after a server-side error")
 
 	pf.String(ConfChunkSize, "1 MB", "OD-DB: Result upload chunk size")
 
 	pf.Uint(ConfUploadRetries, 10, "OD-DB: Max upload retries")
 
-	pf.Duration(ConfUploadRetryInterval, 30 * time.Second, "OD-DB: Time to wait between upload retries")
+	pf.Duration(ConfUploadRetryInterval, 30*time.Second, "OD-DB: Time to wait between upload retries")
 
 	pf.Uint(ConfTasks, 100, "Crawler: Max concurrent tasks")
 
@@ -83,9 +84,9 @@ func prepareConfig() {
 
 	pf.Uint(ConfRetries, 5, "Crawler: Request retries")
 
-	pf.Duration(ConfDialTimeout, 10 * time.Second, "Crawler: Handshake timeout")
+	pf.Duration(ConfDialTimeout, 10*time.Second, "Crawler: Handshake timeout")
 
-	pf.Duration(ConfTimeout, 30 * time.Second, "Crawler: Request timeout")
+	pf.Duration(ConfTimeout, 30*time.Second, "Crawler: Request timeout")
 
 	pf.String(ConfUserAgent, "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0", "Crawler: User-Agent")
 
@@ -93,7 +94,7 @@ func prepareConfig() {
 
 	pf.Duration(ConfCrawlStats, time.Second, "Log: Crawl stats interval")
 
-	pf.Duration(ConfAllocStats, 10 * time.Second, "Log: Resource stats interval")
+	pf.Duration(ConfAllocStats, 10*time.Second, "Log: Resource stats interval")
 
 	pf.Bool(ConfVerbose, false, "Log: Print every listed dir")
 
@@ -145,17 +146,13 @@ func readConfig() {
 	}
 
 	if onlineMode {
-		config.ServerUrl = viper.GetString(ConfServerUrl)
-		if config.ServerUrl == "" {
-			configMissing(ConfServerUrl)
+		config.TrackerUrl = viper.GetString(ConfTrackerUrl)
+		if config.TrackerUrl == "" {
+			configMissing(ConfTrackerUrl)
 		}
-		config.ServerUrl = strings.TrimRight(config.ServerUrl, "/")
-
-		config.Token = viper.GetString(ConfToken)
-		if config.Token == "" {
-			configMissing(ConfToken)
-		}
+		config.TrackerUrl = strings.TrimRight(config.TrackerUrl, "/")
 	}
+	config.TrackerProject = viper.GetString(ConfTrackerProject)
 
 	config.ServerTimeout = viper.GetDuration(ConfServerTimeout)
 
@@ -195,9 +192,11 @@ func readConfig() {
 	}
 
 	if filePath := viper.GetString(ConfLogFile); filePath != "" {
-		f, err := os.OpenFile(filePath, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0644)
+		f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		bufWriter := bufio.NewWriter(f)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 		exitHooks.Add(func() {
 			bufWriter.Flush()
 			f.Close()
