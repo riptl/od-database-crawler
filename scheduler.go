@@ -34,13 +34,16 @@ func Schedule(c context.Context, remotes <-chan *OD) {
 		queuePath := path.Join("queue", fmt.Sprintf("%d", remote.Task.WebsiteId))
 
 		// Delete existing queue
-		if err := os.RemoveAll(queuePath);
-			err != nil { panic(err) }
+		if err := os.RemoveAll(queuePath); err != nil {
+			panic(err)
+		}
 
 		// Start new queue
 		var err error
 		remote.WCtx.Queue, err = OpenQueue(queuePath)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 
 		// Spawn workers
 		for i := 0; i < config.Workers; i++ {
@@ -77,12 +80,12 @@ func ScheduleTask(remotes chan<- *OD, t *Task, u *fasturl.URL) {
 
 	globalWait.Add(1)
 	now := time.Now()
-	od := &OD {
-		Task: *t,
+	od := &OD{
+		Task:    *t,
 		BaseUri: *u,
-		Result: TaskResult {
-			WebsiteId: t.WebsiteId,
-			StartTime: now,
+		Result: TaskResult{
+			WebsiteId:     t.WebsiteId,
+			StartTime:     now,
 			StartTimeUnix: now.Unix(),
 		},
 	}
@@ -117,7 +120,7 @@ func (o *OD) Watch(results chan File) {
 	// Open crawl results file
 	f, err := os.OpenFile(
 		filePath,
-		os.O_CREATE | os.O_RDWR | os.O_TRUNC,
+		os.O_CREATE|os.O_RDWR|os.O_TRUNC,
 		0644,
 	)
 	if err != nil {
@@ -170,24 +173,18 @@ func (o *OD) handleCollect(results chan File, f *os.File, collectErrC chan error
 	// Log finish
 
 	logrus.WithFields(logrus.Fields{
-		"id":  o.Task.WebsiteId,
-		"url": o.BaseUri.String(),
+		"id":       o.Task.WebsiteId,
+		"url":      o.BaseUri.String(),
 		"duration": time.Since(o.Result.StartTime),
 	}).Info("Crawler finished")
 
 	// Set status code
 	now := time.Now()
 	o.Result.EndTimeUnix = now.Unix()
-	fileCount := atomic.LoadUint64(&o.Result.FileCount)
-	if fileCount == 0 {
-		errorCount := atomic.LoadUint64(&o.Result.ErrorCount)
-		if errorCount == 0 {
-			o.Result.StatusCode = "empty"
-		} else {
-			o.Result.StatusCode = "directory listing failed"
-		}
+	if atomic.LoadUint64(&o.Result.ErrorCount) != 0 {
+		o.Result.ResultCode = TR_FAIL
 	} else {
-		o.Result.StatusCode = "success"
+		o.Result.ResultCode = TR_OK
 	}
 }
 
@@ -205,11 +202,17 @@ func (t *Task) collect(results chan File, f *os.File) error {
 		result.Path = fasturl.PathUnescape(result.Path)
 		result.Name = fasturl.PathUnescape(result.Name)
 		resJson, err := json.Marshal(result)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 		_, err = f.Write(resJson)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		_, err = f.Write([]byte{'\n'})
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -7,19 +7,27 @@ import (
 	"time"
 )
 
+type ResultCode int
+
+const (
+	TR_OK   = ResultCode(iota)
+	TR_FAIL = 1
+	TR_SKIP = 2
+)
+
 type Task struct {
 	WebsiteId uint64 `json:"website_id"`
 	Url       string `json:"url"`
 }
 
 type TaskResult struct {
-	StatusCode    string    `json:"status_code"`
-	FileCount     uint64    `json:"file_count"`
-	ErrorCount    uint64    `json:"-"`
-	StartTime     time.Time `json:"-"`
-	StartTimeUnix int64     `json:"start_time"`
-	EndTimeUnix   int64     `json:"end_time"`
-	WebsiteId     uint64    `json:"website_id"`
+	ResultCode    ResultCode `json:"status_code"`
+	FileCount     uint64     `json:"file_count"`
+	ErrorCount    uint64     `json:"-"`
+	StartTime     time.Time  `json:"-"`
+	StartTimeUnix int64      `json:"start_time"`
+	EndTimeUnix   int64      `json:"end_time"`
+	WebsiteId     uint64     `json:"website_id"`
 }
 
 type Job struct {
@@ -51,13 +59,16 @@ func (o *OD) LoadOrStoreKey(k *redblackhash.Key) (exists bool) {
 	defer o.Scanned.Unlock()
 
 	exists = o.Scanned.Get(k)
-	if exists { return true }
+	if exists {
+		return true
+	}
 
 	o.Scanned.Put(k)
 	return false
 }
 
 type errorString string
+
 func (e errorString) Error() string {
 	return string(e)
 }
