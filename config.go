@@ -14,8 +14,10 @@ import (
 
 var config struct {
 	TrackerUrl     string
-	TrackerProject string
-	Token          string
+	TrackerProject int
+	TrackerAlias   string
+	WsBucketScheme string
+	WsBucketHost   string
 	ServerTimeout  time.Duration
 	Recheck        time.Duration
 	ChunkSize      int64
@@ -33,6 +35,9 @@ var onlineMode bool
 const (
 	ConfTrackerUrl          = "server.url"
 	ConfTrackerProject      = "server.project"
+	ConfTrackerAlias        = "server.alias"
+	ConfWsBucketScheme      = "server.ws_bucket_scheme"
+	ConfWsBucketHost        = "server.ws_bucket_host"
 	ConfServerTimeout       = "server.timeout"
 	ConfRecheck             = "server.recheck"
 	ConfCooldown            = "server.cooldown"
@@ -65,6 +70,12 @@ func prepareConfig() {
 	pf.String(ConfTrackerUrl, "http://tt.the-eye.eu/api", "task_tracker api URL")
 
 	pf.String(ConfTrackerProject, "3", "task_tracker project id")
+
+	pf.String(ConfWsBucketScheme, "ws", "ws_bucket scheme")
+
+	pf.String(ConfWsBucketHost, "localhost:3020", "ws_bucket host") //todo def val
+
+	pf.String(ConfTrackerAlias, "crawler", "task_tracker worker alias")
 
 	pf.Duration(ConfServerTimeout, 60*time.Second, "OD-DB request timeout")
 
@@ -152,7 +163,13 @@ func readConfig() {
 		}
 		config.TrackerUrl = strings.TrimRight(config.TrackerUrl, "/")
 	}
-	config.TrackerProject = viper.GetString(ConfTrackerProject)
+	config.TrackerProject = viper.GetInt(ConfTrackerProject)
+
+	config.TrackerAlias = viper.GetString(ConfTrackerAlias)
+
+	config.WsBucketHost = viper.GetString(ConfWsBucketHost)
+
+	config.WsBucketScheme = viper.GetString(ConfWsBucketScheme)
 
 	config.ServerTimeout = viper.GetDuration(ConfServerTimeout)
 

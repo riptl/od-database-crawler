@@ -148,7 +148,7 @@ func (o *OD) Watch(results chan File) {
 	}
 
 	// Upload results
-	err = PushResult(&o.Result, f)
+	err = PushResult(&o.Task, f)
 	if err != nil {
 		logrus.WithError(err).
 			Error("Failed uploading crawl results")

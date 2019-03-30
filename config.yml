@@ -1,11 +1,14 @@
 # OD-Database server settings
 server:
   # Connection URL
-  url: http://localhost/api
+  url: http://localhost:3010
+  # OD-Database project id (for crawling)
   project: 3
-
-  # Server auth token
-  token:
+  # Your worker alias
+  alias: changeme
+  # Websocket bucket host & scheme (ws/wss)
+  ws_bucket_host: localhost:3020
+  ws_bucket_scheme: ws
 
   # Request timeout
   timeout: 60s

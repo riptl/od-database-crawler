@@ -16,8 +16,10 @@ const (
 )
 
 type Task struct {
-	WebsiteId uint64 `json:"website_id"`
-	Url       string `json:"url"`
+	WebsiteId   uint64 `json:"website_id"`
+	Url         string `json:"url"`
+	UploadToken string `json:"upload_token"`
+	TaskId      int64
 }
 
 type TaskResult struct {
