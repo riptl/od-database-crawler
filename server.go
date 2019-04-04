@@ -2,9 +2,7 @@ package main
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/hmac"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/fasthttp/websocket"
@@ -17,7 +15,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"time"
 )
 
 var serverWorker *TrackerWorker
@@ -215,38 +212,13 @@ type ServerTripper struct{}
 func (t *ServerTripper) RoundTrip(req *http.Request) (res *http.Response, err error) {
 	req.Header.Set("User-Agent", serverUserAgent)
 
-	//TODO: Move this whole block elsewhere
+	//TODO: Use task_tracker/client ?
 	if serverWorker != nil {
-		var content []byte
-		if req.Method == "GET" {
-			content = []byte("/task/get/" + strconv.Itoa(config.TrackerProject))
-		} else {
-			//todo: this is retarded and should be moved elsewhere
-			buf, _ := ioutil.ReadAll(req.Body)
-			rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
-			rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
-
-			content, _ = ioutil.ReadAll(rdr1)
-
-			req.Body = rdr2
-		}
-
-		ts := time.Now().Format(time.RFC1123)
-
-		mac := hmac.New(crypto.SHA256.New, serverWorker.Secret)
-		mac.Write(content)
-		mac.Write([]byte(ts))
-		sig := hex.EncodeToString(mac.Sum(nil))
-
 		req.Header.Add("X-Worker-Id", strconv.Itoa(serverWorker.Id))
-		req.Header.Add("Timestamp", time.Now().Format(time.RFC1123))
-		req.Header.Add("X-Signature", sig)
-
+		req.Header.Add("X-Secret", base64.StdEncoding.EncodeToString(serverWorker.Secret))
 	}
 	return http.DefaultTransport.RoundTrip(req)
 }
-
-const mimeJSON = "application/json"
 
 // https://github.com/simon987/task_tracker/blob/master/api/models.go
 

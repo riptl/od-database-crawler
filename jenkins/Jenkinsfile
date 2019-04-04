@@ -1,0 +1,47 @@
+def remote = [:]
+remote.name = 'remote'
+remote.host = env.DEPLOY_HOST
+remote.user = env.DEPLOY_USER
+remote.identityFile = '/var/lib/jenkins/.ssh/id_rsa'
+remote.knownHosts = '/var/lib/jenkins/.ssh/known_hosts'
+remote.allowAnyHosts = true
+remote.retryCount = 3
+remote.retryWaitSec = 3
+logLevel = 'FINER'
+
+pipeline {
+    agent none
+    environment {
+        GOOS='linux'
+        CGO_ENABLED='0'
+        HOME='.'
+    }
+    stages {
+        stage('Build') {
+            agent {
+                docker {
+                    image 'golang:latest'
+                }
+            }
+            steps {
+                sh 'mkdir -p /go/src/github.com/terorie/od-database-crawler'
+                sh 'cp -r *.go fasturl ds jenkins/build.sh "/go/src/github.com/terorie/od-database-crawler"'
+                sh 'cd /go/src/github.com/terorie/od-database-crawler && go get ./...'
+                sh './jenkins/build.sh'
+                stash includes: 'dist/', name: 'dist'
+            }
+        }
+        stage('Deploy') {
+            agent none
+            steps {
+                node('master') {
+                    unstash 'dist'
+                    sshCommand remote: remote, command: "ls od-database-crawler/"
+                    sshPut remote: remote, from: 'dist/', into: 'od-database-crawler'
+                }
+            }
+        }
+    }
+}
+
+
