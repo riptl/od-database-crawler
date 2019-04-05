@@ -1,14 +1,14 @@
 # OD-Database server settings
 server:
   # Connection URL
-  url: http://localhost:3010
+  url: https://tt.the-eye.eu/api
   # OD-Database project id (for crawling)
-  project: 3
+  project: 1
   # Your worker alias
   alias: changeme
   # Websocket bucket host & scheme (ws/wss)
-  ws_bucket_host: localhost:3020
-  ws_bucket_scheme: ws
+  ws_bucket_host: https://wsb.the-eye.eu
+  ws_bucket_scheme: wss
 
   # Request timeout
   timeout: 60s
@@ -47,7 +47,7 @@ output:
 # Crawler settings
 crawl:
   # Number of sites that can be processed at once
-  tasks: 100
+  tasks: 25
 
   # Number of connections per site
   # Please be careful with this setting!

@@ -67,15 +67,15 @@ func prepareConfig() {
 	pf.StringVar(&configFile, "config", "", "Config file")
 	configFile = os.Getenv("OD_CONFIG")
 
-	pf.String(ConfTrackerUrl, "http://tt.the-eye.eu/api", "task_tracker api URL")
+	pf.String(ConfTrackerUrl, "https://tt.the-eye.eu/api", "task_tracker api URL")
 
-	pf.String(ConfTrackerProject, "3", "task_tracker project id")
+	pf.String(ConfTrackerProject, "1", "task_tracker project id")
 
-	pf.String(ConfWsBucketScheme, "ws", "ws_bucket scheme")
+	pf.String(ConfWsBucketScheme, "wss", "ws_bucket scheme")
 
-	pf.String(ConfWsBucketHost, "localhost:3020", "ws_bucket host") //todo def val
+	pf.String(ConfWsBucketHost, "wsb.the-eye.eu", "ws_bucket host")
 
-	pf.String(ConfTrackerAlias, "crawler", "task_tracker worker alias")
+	pf.String(ConfTrackerAlias, "changeme", "task_tracker worker alias")
 
 	pf.Duration(ConfServerTimeout, 60*time.Second, "OD-DB request timeout")
 
@@ -89,7 +89,7 @@ func prepareConfig() {
 
 	pf.Duration(ConfUploadRetryInterval, 30*time.Second, "OD-DB: Time to wait between upload retries")
 
-	pf.Uint(ConfTasks, 100, "Crawler: Max concurrent tasks")
+	pf.Uint(ConfTasks, 25, "Crawler: Max concurrent tasks")
 
 	pf.Uint(ConfWorkers, 4, "Crawler: Connections per server")
 
