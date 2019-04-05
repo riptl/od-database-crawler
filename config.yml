@@ -47,7 +47,7 @@ output:
 # Crawler settings
 crawl:
   # Number of sites that can be processed at once
-  tasks: 100
+  tasks: 25
 
   # Number of connections per site
   # Please be careful with this setting!
@@ -81,4 +81,4 @@ crawl:
   # in memory.
   # A negative value will cause all jobs
   # to be stored in memory. (Don't do this)
-  job_buffer: 5000
+  job_buffer: -1
