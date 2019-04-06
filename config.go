@@ -81,7 +81,7 @@ func prepareConfig() {
 
 	pf.Duration(ConfRecheck, 1*time.Second, "OD-DB: Poll interval for new jobs")
 
-	pf.Duration(ConfCooldown, 30*time.Second, "OD-DB: Time to wait after a server-side error")
+	pf.Duration(ConfCooldown, 1*time.Minute, "OD-DB: Time to wait after a server-side error")
 
 	pf.String(ConfChunkSize, "1 MB", "OD-DB: Result upload chunk size")
 
@@ -91,7 +91,7 @@ func prepareConfig() {
 
 	pf.Uint(ConfTasks, 25, "Crawler: Max concurrent tasks")
 
-	pf.Uint(ConfWorkers, 4, "Crawler: Connections per server")
+	pf.Uint(ConfWorkers, 1, "Crawler: Connections per server")
 
 	pf.Uint(ConfRetries, 5, "Crawler: Request retries")
 
@@ -101,11 +101,11 @@ func prepareConfig() {
 
 	pf.String(ConfUserAgent, "Mozilla/5.0 (X11; od-database-crawler) Gecko/20100101 Firefox/52.0", "Crawler: User-Agent")
 
-	pf.Uint(ConfJobBufferSize, 5000, "Crawler: Task queue cache size")
+	pf.Int(ConfJobBufferSize, -1, "Crawler: Task queue cache size")
 
-	pf.Duration(ConfCrawlStats, time.Second, "Log: Crawl stats interval")
+	pf.Duration(ConfCrawlStats, 500*time.Second, "Log: Crawl stats interval")
 
-	pf.Duration(ConfAllocStats, 10*time.Second, "Log: Resource stats interval")
+	pf.Duration(ConfAllocStats, 500*time.Second, "Log: Resource stats interval")
 
 	pf.Bool(ConfVerbose, false, "Log: Print every listed dir")
 

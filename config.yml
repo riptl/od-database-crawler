@@ -29,10 +29,10 @@ server:
 # Log output settings
 output:
   # Crawl statistics
-  crawl_stats: 1s
+  crawl_stats: 1m
 
   # CPU/RAM/Job queue stats
-  resource_stats: 10s
+  resource_stats: 1m
 
   # More output? (Every listed dir)
   verbose: false
@@ -81,4 +81,4 @@ crawl:
   # in memory.
   # A negative value will cause all jobs
   # to be stored in memory. (Don't do this)
-  job_buffer: 5000
+  job_buffer: -1

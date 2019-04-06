@@ -14,8 +14,8 @@ import (
 var globalWait sync.WaitGroup
 
 type WorkerContext struct {
-	OD *OD
-	Queue *BufferedQueue
+	OD            *OD
+	Queue         *BufferedQueue
 	lastRateLimit time.Time
 	numRateLimits int
 }
@@ -56,16 +56,16 @@ func (w *WorkerContext) step(results chan<- File, job Job) {
 
 		if !shouldRetry(err) {
 			atomic.AddUint64(&totalAborted, 1)
-			logrus.WithField("url", job.UriStr).
-				WithError(err).
-				Error("Giving up after failure")
+			//logrus.WithField("url", job.UriStr).
+			//	WithError(err).
+			//	Error("Giving up after failure")
 			return
 		}
 
 		if job.Fails > config.Retries {
 			atomic.AddUint64(&totalAborted, 1)
-			logrus.WithField("url", job.UriStr).
-				Errorf("Giving up after %d fails", job.Fails)
+			//logrus.WithField("url", job.UriStr).
+			//	Errorf("Giving up after %d fails", job.Fails)
 		} else {
 			atomic.AddUint64(&totalRetries, 1)
 			if err == ErrRateLimit {
@@ -88,7 +88,9 @@ func (w *WorkerContext) step(results chan<- File, job Job) {
 }
 
 func (w *WorkerContext) DoJob(job *Job, f *File) (newJobs []Job, err error) {
-	if len(job.Uri.Path) == 0 { return }
+	if len(job.Uri.Path) == 0 {
+		return
+	}
 	if job.Uri.Path[len(job.Uri.Path)-1] == '/' {
 		// Load directory
 		links, err := GetDir(job, f)
@@ -159,10 +161,10 @@ func (w *WorkerContext) queueJob(job Job) {
 	w.OD.Wait.Add(1)
 
 	if w.numRateLimits > 0 {
-		if time.Since(w.lastRateLimit) > 5 * time.Second {
+		if time.Since(w.lastRateLimit) > 5*time.Second {
 			w.numRateLimits = 0
 		} else {
-			time.Sleep(time.Duration(math.Sqrt(float64(50 * w.numRateLimits))) *
+			time.Sleep(time.Duration(math.Sqrt(float64(50*w.numRateLimits))) *
 				100 * time.Millisecond)
 		}
 	}
