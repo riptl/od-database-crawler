@@ -134,7 +134,7 @@ func PushResult(task *Task, f *os.File) (err error) {
 	err = uploadWebsocket(f, task.UploadToken)
 	if err != nil {
 		logrus.Errorf("Failed to upload file list: %s", err)
-		err2 := releaseTask(task, TR_SKIP)
+		err2 := releaseTask(task, TR_FAIL)
 		if err2 != nil {
 			logrus.Error(err2)
 		}
@@ -164,7 +164,7 @@ func uploadWebsocket(f *os.File, token string) (err error) {
 	_, _ = io.Copy(socketWriter, f)
 	err = socketWriter.Close()
 	if err != nil {
-		panic(err)
+		logrus.Error("FIXME: couldn't do file upload")
 		return
 	}
 	err = conn.Close()
