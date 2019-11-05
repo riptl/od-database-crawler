@@ -1,7 +1,7 @@
 module github.com/terorie/od-database-crawler
 
 require (
-	github.com/beeker1121/goque v2.0.1+incompatible
+	github.com/beeker1121/goque v2.1.0+incompatible
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/sirupsen/logrus v1.4.0
 	github.com/spf13/cobra v0.0.3
